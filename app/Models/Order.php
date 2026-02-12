@@ -10,7 +10,9 @@ class Order extends Model
     use HasFactory;
 
     // Permitimos que se guarden estos datos en masa
-    protected $fillable = ['room_number', 'total_price', 'status'];
+    protected $fillable = ['room_number',
+                            'total_price',
+                            'status'];
 
     public function services()
     {

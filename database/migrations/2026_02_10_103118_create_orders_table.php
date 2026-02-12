@@ -11,9 +11,9 @@ return new class extends Migration
         // 1. Tabla PEDIDOS
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->string('room_number'); // Ej: "101"
+            $table->string('room_number');
             $table->decimal('total_price', 8, 2);
-            $table->enum('status', ['pending', 'completed', 'cancelled'])->default('pending');
+            $table->string('status')->default('pending');
             $table->timestamps();
         });
 

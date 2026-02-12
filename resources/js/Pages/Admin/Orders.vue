@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'; // Asegúrate de importar esto
+import { ref, onMounted, onUnmounted } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { ClockIcon, CheckCircleIcon } from '@heroicons/vue/24/solid';
@@ -8,64 +8,49 @@ const props = defineProps({
     orders: Array
 });
 
-// --- SONIDO DE NOTIFICACIÓN 🔔 ---
-// Usamos un sonido online de "campanilla de servicio"
 const bellSound = new Audio('https://cdn.freesound.org/previews/337/337049_3232293-lq.mp3');
-
-// Variable para recordar cuántos pedidos teníamos antes
 const previousOrderCount = ref(props.orders.length);
 
-// --- AUTO-REFRESCO (POLLING) ---
 let intervalId = null;
 
 onMounted(() => {
     intervalId = setInterval(() => {
         router.reload({
-            only: ['orders'], // Solo recargamos la lista de pedidos
+            only: ['orders'],
             preserveScroll: true,
-            preserveState: true,
             onSuccess: (page) => {
-                // Al terminar de recargar, comprobamos si ha entrado algo nuevo
                 const newCount = page.props.orders.length;
-
                 if (newCount > previousOrderCount.value) {
-                    // ¡HAY PEDIDOS NUEVOS!
-                    console.log("¡Ding! Nuevo pedido entrante 🛎️");
-
-                    // Reproducimos el sonido (capturamos error por si el navegador bloquea el audio)
-                    bellSound.play().catch(error => {
-                        console.warn("El navegador bloqueó el sonido. Haz clic en la página para habilitarlo.");
-                    });
+                    bellSound.play().catch(() => {});
                 }
-
-                // Actualizamos el contador para la próxima vez
                 previousOrderCount.value = newCount;
             }
         });
-    }, 5000); // Cada 5 segundos
+    }, 5000);
 });
 
-onUnmounted(() => {
-    if (intervalId) clearInterval(intervalId);
-});
+onUnmounted(() => clearInterval(intervalId));
 
-// Formateo de moneda
+// --- FUNCIONES DE FORMATEO (IMPORTANTE) ---
 const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
 
-// Completar pedido
-const completeOrder = (id) => {
-    if (confirm('¿Pedido entregado?')) {
-        router.post(route('order.complete', id));
-    }
+const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+};
+
+// --- ACTUALIZAR ESTADO ---
+const updateStatus = (id, newStatus) => {
+    router.patch(route('orders.updateStatus', id), {
+        status: newStatus
+    });
 };
 </script>
-
 <template>
     <Head title="Pedidos en Cocina" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Pedidos</h2>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Panel de Cocina</h2>
         </template>
 
         <div class="py-12">
@@ -73,52 +58,76 @@ const completeOrder = (id) => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                    <div v-for="order in orders" :key="order.id"
-                        class="bg-white rounded-xl shadow-lg border-l-4 overflow-hidden relative"
-                        :class="order.status === 'pending' ? 'border-yellow-400' : 'border-green-500 opacity-75'"
-                    >
-                        <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                            <div>
-                                <h3 class="font-bold text-lg text-gray-800">HABITACIÓN {{ order.room_number }}</h3>
-                                <p class="text-xs text-gray-500">Hora: {{ formatDate(order.created_at) }}</p>
-                            </div>
+                    <div v-for="order in orders" :key="order.id" class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 flex flex-col">
 
-                            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide"
-                                :class="order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'">
-                                {{ order.status === 'pending' ? 'Pendiente' : 'Servido' }}
-                            </span>
+                        <div class="p-4 bg-gray-800 text-white flex justify-between items-center">
+                            <div>
+                                <span class="text-xs uppercase tracking-widest text-gray-400">Habitación</span>
+                                <h3 class="text-2xl font-black">{{ order.room_number }}</h3>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs uppercase tracking-widest text-gray-400">Hora</span>
+                                <p class="font-bold">{{ formatDate(order.created_at) }}</p>
+                            </div>
                         </div>
 
-                        <div class="p-4 space-y-3">
+                        <div class="p-4 flex-grow">
                             <ul class="divide-y divide-gray-100">
-                                <li v-for="service in order.services" :key="service.id" class="py-2 flex justify-between">
-                                    <span class="text-gray-700 font-medium">1x {{ service.name }}</span>
-                                    </li>
+                                <li v-for="service in order.services" :key="service.id" class="py-2 flex justify-between items-center">
+                                    <span class="text-gray-800 font-bold">
+                                        {{ service.pivot.quantity }}x {{ service.name }}
+                                    </span>
+                                    <span class="text-gray-500 text-sm">{{ formatPrice(service.pivot.price) }}</span>
+                                </li>
                             </ul>
                         </div>
 
-                        <div class="p-4 bg-gray-50 border-t flex justify-between items-center">
-                            <span class="font-bold text-xl text-gray-900">{{ formatPrice(order.total_price) }}</span>
+                        <div class="p-4 bg-gray-50 border-t">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-gray-500 font-medium">Total:</span>
+                                <span class="text-xl font-black text-gray-900">{{ formatPrice(order.total_price) }}</span>
+                            </div>
 
-                            <button
-                                @click="toggleStatus(order)"
-                                class="flex items-center gap-2 px-4 py-2 rounded-lg text-white font-bold transition shadow-sm"
-                                :class="order.status === 'pending'
-                                    ? 'bg-slate-900 hover:bg-green-600'
-                                    : 'bg-gray-400 hover:bg-yellow-500'"
-                            >
-                                <component :is="order.status === 'pending' ? CheckCircleIcon : ClockIcon" class="w-5 h-5" />
-                                {{ order.status === 'pending' ? 'Servir' : 'Reabrir' }}
-                            </button>
+                            <div class="flex flex-col gap-2">
+                                <button
+                                    v-if="order.status === 'pending'"
+                                    @click="updateStatus(order.id, 'preparing')"
+                                    class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"
+                                >
+                                    <span>Empezar a cocinar 👨‍🍳</span>
+                                </button>
+
+                                <button
+                                    v-if="order.status === 'preparing'"
+                                    @click="updateStatus(order.id, 'delivering')"
+                                    class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"
+                                >
+                                    <span>Enviar a habitación 🚀</span>
+                                </button>
+
+                                <button
+                                    v-if="order.status === 'delivering'"
+                                    @click="updateStatus(order.id, 'completed')"
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"
+                                >
+                                    <span>Entregado ✅</span>
+                                </button>
+
+                                <div class="text-center">
+                                    <span class="text-[10px] uppercase font-black tracking-tighter text-gray-400">
+                                        Estado actual: {{ order.status }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                 </div>
 
-                <div v-if="orders.length === 0" class="text-center py-20 bg-white rounded-lg shadow-sm border border-dashed border-gray-300">
-                    <ClockIcon class="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                    <h3 class="text-lg font-medium text-gray-900">Sin pedidos pendientes</h3>
-                    <p class="text-gray-500">Todo tranquilo por aquí...</p>
+                <div v-if="orders.length === 0" class="text-center py-20 bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-200">
+                    <CheckCircleIcon class="w-16 h-16 mx-auto text-green-200 mb-4" />
+                    <h3 class="text-lg font-bold text-gray-900">¡Cocina despejada!</h3>
+                    <p class="text-gray-500">No hay pedidos pendientes en este momento.</p>
                 </div>
 
             </div>
