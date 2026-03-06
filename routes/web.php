@@ -6,6 +6,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\OrderController;
+// use BaconQrCode\Encoder\QrCode;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 //Rutas Públicas
 Route::get('/', function () {
@@ -47,11 +49,16 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::put('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
     // GENERAR QRs
-    Route::get('/qrcodes', [ServiceController::class, 'qrcodes'])->name('admin.qrcodes');
+    Route::get('/qrcodes', [ServiceController::class, 'qrcodes'])->name('admin.qrcodes');// cambiarlo
     // GESTIÓN DE HABITACIONES
     Route::get('/qrcodes', [ServiceController::class, 'qrcodes'])->name('admin.qrcodes');
     Route::post('/rooms', [ServiceController::class, 'storeRoom'])->name('rooms.store');
     Route::delete('/rooms/{room}', [ServiceController::class, 'destroyRoom'])->name('rooms.destroy');
 });
 
+//imprimir QR
+Route::get('/generar-qr/{habitacion}', function ($habitacion) {
+    $urlDelMenu = "http://localhost:8080/?habitacion=" . $habitacion;
+    return QrCode::size(300)->generate($urlDelMenu);
+});
 require __DIR__.'/auth.php';
