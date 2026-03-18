@@ -8,23 +8,30 @@ use Inertia\Inertia;
 use App\Models\Category;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Models\Room;
+use App\Models\Order;
 
 class ServiceController extends Controller
 {
-    public function index()
+public function index(Request $request)
     {
-
         $services = Service::with('category')->get();
-
         $categories = Category::all();
+
+        $roomNumber = $request->query('room', '101');
+
+        $myOrders = \App\Models\Order::with('services')
+                        ->where('room_number', $roomNumber)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
 
         return Inertia::render('Menu', [
             'services' => $services,
-            'categories' => $categories
+            'categories' => $categories,
+            'myOrders' => $myOrders,
+            'currentRoom' => $roomNumber
         ]);
     }
 
-    //1. panel de admionistracion
 public function admin()
     {
         $services = Service::with('category')->get();
