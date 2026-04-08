@@ -37,12 +37,16 @@ const showingNavigationDropdown = ref(false);
                                     Dashboard
                                 </NavLink>
 
-                                <NavLink :href="route('admin.index')" :active="route().current('admin.index')">
-                                    Menú / Servicios
+                                <NavLink :href="route('orders.index')" :active="route().current('orders.index')">
+                                    Pedidos Actuales
                                 </NavLink>
 
-                                <NavLink :href="route('orders.index')" :active="route().current('orders.index')">
-                                    Pedidos
+                                <NavLink :href="route('rooms.index')" :active="route().current('rooms.index') || route().current('admin.qrcodes')">
+                                    Habitaciones
+                                </NavLink>
+
+                                <NavLink :href="route('admin.index')" :active="route().current('admin.index') || route().current('services.create') || route().current('services.edit')">
+                                    Gestión de Catálogo
                                 </NavLink>
                             </div>
                         </div>
@@ -150,6 +154,15 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('dashboard')"
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('orders.index')" :active="route().current('orders.index')">
+                            Pedidos Actuales
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('rooms.index')" :active="route().current('rooms.index') || route().current('admin.qrcodes')">
+                            Habitaciones
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('admin.index')" :active="route().current('admin.index')">
+                            Gestión de Catálogo
                         </ResponsiveNavLink>
                     </div>
 

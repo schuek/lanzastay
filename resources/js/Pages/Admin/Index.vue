@@ -47,15 +47,15 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
     <AuthenticatedLayout>
         <template #header>
             <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Gestión del Catálogo</h2>
-                <Link :href="route('services.create')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-md transition">
+                <h2 class="font-semibold text-xl text-[#1A1A1A] leading-tight">Gestión del Catálogo</h2>
+                <Link :href="route('services.create')" class="bg-[#D45D3B] hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-md transition">
                     <PlusCircleIcon class="w-5 h-5" />
                     Nuevo Servicio
                 </Link>
             </div>
         </template>
 
-        <div class="py-12">
+        <div class="py-12 bg-[#F5F5F5] min-h-screen">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
                 <div class="flex space-x-2 mb-6 overflow-x-auto pb-2">
@@ -65,7 +65,7 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
                         @click="activeCategoryId = category.id"
                         class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-all shadow-sm border"
                         :class="activeCategoryId === category.id
-                            ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-offset-2 ring-slate-900'
+                            ? 'bg-[#1A1A1A] text-white border-[#1A1A1A] ring-2 ring-offset-2 ring-[#D45D3B]'
                             : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'">
                         <component :is="getIcon(category.icon)" class="w-5 h-5" />
                         {{ category.name }}
@@ -84,6 +84,8 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen URL</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
@@ -95,12 +97,18 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
                                 <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                                     {{ service.description }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#D45D3B]">
                                     {{ formatPrice(service.price) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">
+                                    {{ service.service_type || 'comida' }}
+                                </td>
+                                <td class="px-6 py-4 text-xs text-gray-500 max-w-xs truncate">
+                                    {{ service.image_url || '—' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex justify-end gap-3">
-                                        <Link :href="route('services.edit', service.id)" class="text-indigo-600 hover:text-indigo-900">
+                                        <Link :href="route('services.edit', service.id)" class="text-[#D45D3B] hover:opacity-70">
                                             <PencilSquareIcon class="w-5 h-5" />
                                         </Link>
                                         <button @click="deleteService(service.id)" class="text-red-600 hover:text-red-900">
@@ -118,7 +126,7 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
                         </div>
                         <h3 class="text-lg font-medium text-gray-900">Esta sección está vacía</h3>
                         <p class="text-gray-500 mb-6">No hay servicios creados en esta categoría todavía.</p>
-                        <Link :href="route('services.create')" class="text-indigo-600 font-bold hover:underline">
+                        <Link :href="route('services.create')" class="text-[#D45D3B] font-bold hover:underline">
                             ¡Crea el primero ahora!
                         </Link>
                     </div>

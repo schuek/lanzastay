@@ -10,7 +10,7 @@ class Service extends Model
     use HasFactory;
 
     // Campos que permitimos rellenar
-    protected $fillable = ['category_id', 'name', 'description', 'price'];
+    protected $fillable = ['category_id', 'name', 'description', 'price', 'service_type', 'image_url'];
 
     // Relación: Un Servicio "pertenece a" una Categoría
     public function category()

@@ -10,6 +10,8 @@ const form = useForm({
     description: '',
     price: '',
     category_id: '',
+    service_type: 'comida',
+    image_url: '',
 });
 
 const submit = () => {
@@ -52,8 +54,22 @@ const submit = () => {
                         </div>
 
                         <div>
+                            <label class="block font-medium text-sm text-gray-700">Tipo de Servicio</label>
+                            <select v-model="form.service_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                                <option value="comida">Comida</option>
+                                <option value="limpieza">Limpieza</option>
+                                <option value="mantenimiento">Mantenimiento</option>
+                            </select>
+                        </div>
+
+                        <div>
                             <label class="block font-medium text-sm text-gray-700">Descripción</label>
                             <textarea v-model="form.description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" rows="3"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-sm text-gray-700">Imagen (URL)</label>
+                            <input v-model="form.image_url" type="url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="https://..." />
                         </div>
 
                         <div class="flex items-center justify-end gap-4">

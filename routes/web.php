@@ -5,10 +5,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\OrderController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 // Rutas Públicas
 Route::get('/', function () {
@@ -22,6 +19,7 @@ Route::get('/', function () {
 
 Route::post('/order', [OrderController::class, 'store'])->name('order.store');
 Route::get('/menu', [ServiceController::class, 'index'])->name('menu');
+Route::get('/tracking/{order}', [OrderController::class, 'tracking'])->name('orders.tracking');
 
 // Rutas Privadas
 Route::get('/dashboard', function () {
@@ -48,42 +46,17 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
 
     // GESTION DE PEDIDOS
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/poll', [OrderController::class, 'poll'])->name('orders.poll');
     Route::put('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
 
     // --- GESTIÓN DE HABITACIONES Y QRs ---
-    Route::get('/qrcodes', function () {
-        // Buscamos las habitaciones reales en MySQL
-        $codes = DB::table('habitacions')->get()->map(function ($hab) {
-            return [
-                'id' => $hab->id,
-                'room' => $hab->numero,
-                // Genera el código QR dibujado en texto apuntando al menú con el número oculto
-                'qr' => (string) QrCode::size(150)->margin(1)->generate(url('/menu?room=' . $hab->numero))
-            ];
-        });
-        return Inertia::render('Admin/QrCodes', ['codes' => $codes]);
-    })->name('admin.qrcodes');
-
-    Route::post('/rooms', function (Request $request) {
-        // Guarda la nueva habitación en MySQL
-        DB::table('habitacions')->insert([
-            'numero' => $request->number,
-            'activa' => true
-        ]);
-        return back();
-    })->name('rooms.store');
-
-    Route::delete('/rooms/{id}', function ($id) {
-        // Borra la habitación de MySQL
-        DB::table('habitacions')->where('id', $id)->delete();
-        return back();
-    })->name('rooms.destroy');
-});
-
-// imprimir QR (Ruta antigua, la dejamos por si la usas en otra parte de la app)
-Route::get('/generar-qr/{habitacion}', function ($habitacion) {
-    $urlDelMenu = "http://localhost:8080/?habitacion=" . $habitacion;
-    return QrCode::size(300)->generate($urlDelMenu);
+    Route::get('/qrcodes', [ServiceController::class, 'qrcodes'])->name('admin.qrcodes');
+    Route::get('/rooms', [ServiceController::class, 'rooms'])->name('rooms.index');
+    Route::post('/rooms', [ServiceController::class, 'storeRoom'])->name('rooms.store');
+    Route::put('/rooms/{room}', [ServiceController::class, 'updateRoom'])->name('rooms.update');
+    Route::post('/rooms/{room}/check-in', [ServiceController::class, 'checkInRoom'])->name('rooms.checkin');
+    Route::post('/rooms/{room}/check-out', [ServiceController::class, 'checkOutRoom'])->name('rooms.checkout');
+    Route::delete('/rooms/{room}', [ServiceController::class, 'destroyRoom'])->name('rooms.destroy');
 });
 
 require __DIR__.'/auth.php';

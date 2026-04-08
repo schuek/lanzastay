@@ -14,6 +14,8 @@ const form = useForm({
     description: props.service.description,
     price: props.service.price,
     category_id: props.service.category_id,
+    service_type: props.service.service_type ?? 'comida',
+    image_url: props.service.image_url ?? '',
 });
 
 // Enviamos los datos con método PUT (Actualizar)
@@ -75,6 +77,19 @@ const submit = () => {
                         </div>
 
                         <div>
+                            <label class="block font-medium text-sm text-gray-700">Tipo de Servicio</label>
+                            <select
+                                v-model="form.service_type"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                                <option value="comida">Comida</option>
+                                <option value="limpieza">Limpieza</option>
+                                <option value="mantenimiento">Mantenimiento</option>
+                            </select>
+                            <div v-if="form.errors.service_type" class="text-red-500 text-sm mt-1">{{ form.errors.service_type }}</div>
+                        </div>
+
+                        <div>
                             <label class="block font-medium text-sm text-gray-700">Descripción</label>
                             <textarea
                                 v-model="form.description"
@@ -82,6 +97,17 @@ const submit = () => {
                                 rows="3"
                             ></textarea>
                             <div v-if="form.errors.description" class="text-red-500 text-sm mt-1">{{ form.errors.description }}</div>
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-sm text-gray-700">Imagen (URL)</label>
+                            <input
+                                v-model="form.image_url"
+                                type="url"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                placeholder="https://..."
+                            />
+                            <div v-if="form.errors.image_url" class="text-red-500 text-sm mt-1">{{ form.errors.image_url }}</div>
                         </div>
 
                         <div class="flex items-center justify-end gap-4 pt-4 border-t">
