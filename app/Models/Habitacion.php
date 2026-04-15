@@ -18,4 +18,9 @@ class Habitacion extends Model
     {
         return $this->hasMany(Order::class, 'habitacion_id');
     }
+
+    public function activityReservations(): HasMany
+    {
+        return $this->hasMany(ActivityReservation::class, 'room_id');
+    }
 }

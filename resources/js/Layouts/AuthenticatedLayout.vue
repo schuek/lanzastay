@@ -48,6 +48,9 @@ const showingNavigationDropdown = ref(false);
                                 <NavLink :href="route('admin.index')" :active="route().current('admin.index') || route().current('services.create') || route().current('services.edit')">
                                     Gestión de Catálogo
                                 </NavLink>
+                                <NavLink :href="route('activities.index')" :active="route().current('activities.index') || route().current('activity-reservations.index')">
+                                    Actividades y Reservas
+                                </NavLink>
                             </div>
                         </div>
 
@@ -163,6 +166,9 @@ const showingNavigationDropdown = ref(false);
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('admin.index')" :active="route().current('admin.index')">
                             Gestión de Catálogo
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('activities.index')" :active="route().current('activities.index') || route().current('activity-reservations.index')">
+                            Actividades y Reservas
                         </ResponsiveNavLink>
                     </div>
 

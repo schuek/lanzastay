@@ -9,6 +9,8 @@ use App\Models\Category;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Models\Habitacion;
 use App\Models\Order;
+use App\Models\Activity;
+use App\Models\ActivityReservation;
 use Illuminate\Support\Str;
 
 class ServiceController extends Controller
@@ -41,10 +43,22 @@ public function index(Request $request)
                         ->orderBy('created_at', 'desc')
                         ->get();
 
+        $activities = Activity::query()
+            ->orderBy('date_time')
+            ->get();
+
+        $myReservations = ActivityReservation::query()
+            ->with('activity')
+            ->where('room_id', $room->id)
+            ->latest()
+            ->get();
+
         return Inertia::render('Menu', [
             'services' => $services,
             'categories' => $categories,
             'myOrders' => $myOrders,
+            'activities' => $activities,
+            'myReservations' => $myReservations,
             'currentRoom' => $roomNumber,
             'currentRoomId' => $room?->id,
             'sessionToken' => $token,

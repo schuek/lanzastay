@@ -5,7 +5,8 @@ import {
     ClipboardDocumentCheckIcon,
     PencilSquareIcon,
     QrCodeIcon,
-    UserGroupIcon
+    UserGroupIcon,
+    TicketIcon,
 } from '@heroicons/vue/24/outline';
 
 // Definimos las opciones del panel para mantener el código limpio
@@ -36,6 +37,15 @@ const adminOptions = [
         color: 'text-purple-600',
         bg: 'bg-purple-50',
         border: 'hover:border-purple-200'
+    },
+    {
+        title: 'Actividades y Reservas',
+        description: 'Gestionar excursiones, actividades y validar reservas de recepción.',
+        route: 'activities.index',
+        icon: TicketIcon,
+        color: 'text-[#A64B35]',
+        bg: 'bg-[#A64B35]/10',
+        border: 'hover:border-[#A64B35]/30'
     },
     {
         title: 'Personal',
