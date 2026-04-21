@@ -248,15 +248,24 @@ const statusLabel = (status) => ({ pendiente: 'Pendiente', confirmada: 'Confirma
                         <article
                             v-for="tour in busTours"
                             :key="tour.id"
-                            class="w-[240px] h-[320px] flex-shrink-0 relative rounded-2xl overflow-hidden snap-start"
+                            class="w-[240px] h-[320px] flex-shrink-0 relative rounded-2xl overflow-hidden snap-start bg-[#A64B35]"
                         >
+                            <div class="absolute inset-0 z-0 bg-gradient-to-br from-[#A64B35] to-[#2F2A26] flex items-center justify-center p-4">
+                                <span class="text-white/10 font-black text-3xl uppercase tracking-widest text-center -rotate-12 leading-none">
+                                    {{ tour.name || 'TOUR' }}
+                                </span>
+                            </div>
+
                             <img
-                                :src="tour.image_url || 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1000&q=80&fm=avif'"
+                                src="/images/timanfaya.avif"
                                 :alt="tour.name"
-                                class="w-full h-full object-cover"
+                                class="w-full h-full object-cover relative z-10"
+                                @error="$event.target.style.display='none'"
                             >
-                            <div class="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/80 to-transparent"></div>
-                            <div class="absolute left-4 right-4 bottom-4 text-white">
+
+                            <div class="absolute z-20 inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"></div>
+
+                            <div class="absolute z-30 left-4 right-4 bottom-4 text-white">
                                 <h3 class="text-lg font-bold mb-2">{{ tour.name || 'Timanfaya' }}</h3>
                                 <div class="flex items-center gap-3 text-sm">
                                     <button @click="openActivityModal(tour)" class="inline-flex items-center gap-1 font-semibold">
