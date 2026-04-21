@@ -257,7 +257,8 @@ const statusLabel = (status) => ({ pendiente: 'Pendiente', confirmada: 'Confirma
                             </div>
 
                             <img
-                                src="/images/timanfaya.avif"
+                                v-if="tour.image_url"
+                                :src="tour.image_url"
                                 :alt="tour.name"
                                 class="w-full h-full object-cover relative z-10"
                                 @error="$event.target.style.display='none'"
@@ -417,12 +418,14 @@ const statusLabel = (status) => ({ pendiente: 'Pendiente', confirmada: 'Confirma
                         </div>
                     </div>
                 </div>
-                <div class="border-t pt-4">
-                    <div class="flex justify-between mb-3 font-bold">
-                        <span>Total</span>
-                        <span class="text-[#A64B35]">{{ formatPrice(totalPrice) }}</span>
-                    </div>
-                    <button @click="submitOrder" class="w-full bg-[#A64B35] text-white rounded-lg py-3 font-bold">Confirmar pedido</button>
+                <div class="border-t pt-4 pb-28 md:pb-4 bg-white relative z-50">
+                <div class="flex justify-between mb-3 font-bold">
+                    <span>Total</span>
+                    <span class="text-[#A64B35]">{{ formatPrice(totalPrice) }}</span>
+                </div>
+                <button @click="submitOrder" class="w-full bg-[#A64B35] text-white rounded-lg py-3 font-bold shadow-lg">
+                    Confirmar pedido
+                </button>
                 </div>
             </div>
         </div>
