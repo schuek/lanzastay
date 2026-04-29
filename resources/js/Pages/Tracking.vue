@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import axios from 'axios';
 
 const props = defineProps({
@@ -50,6 +50,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
     if (pollingInterval) clearInterval(pollingInterval);
 });
+
+const goBack = () => {
+    window.history.back();
+};
 </script>
 
 <template>
@@ -84,9 +88,12 @@ onBeforeUnmount(() => {
                 <p class="text-xl font-black text-[#1A1A1A] mt-1">{{ currentStatusLabel }}</p>
             </div>
 
-            <Link :href="route('menu', { habitacion: orderState?.room_number })" class="inline-flex items-center justify-center bg-[#D45D3B] text-white px-5 py-3 rounded-lg font-bold hover:opacity-90 transition">
-                Volver al inicio
-            </Link>
+            <button @click="goBack" class="w-full mt-6 bg-[#A64B35] text-white rounded-lg py-3 font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-orange-800 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                    <path fill-rule="evenodd" d="M11.03 3.97a.75.75 0 010 1.06l-6.22 6.22H21a.75.75 0 010 1.5H4.81l6.22 6.22a.75.75 0 11-1.06 1.06l-7.5-7.5a.75.75 0 010-1.06l7.5-7.5a.75.75 0 011.06 0z" clip-rule="evenodd" />
+                </svg>
+                Volver al Menú
+            </button>
         </div>
         <div v-else class="max-w-2xl mx-auto bg-white rounded-2xl border border-[#1A1A1A]/10 shadow-sm p-6 text-center">
             <p class="text-[#1A1A1A]/70 font-bold">Cargando seguimiento...</p>

@@ -39,6 +39,33 @@ class OrderController extends Controller
         ]);
     }
 
+    public function myOrders(Request $request)
+    {
+        $validated = $request->validate([
+            'room_number' => 'required|string|exists:habitacions,numero',
+            'session_token' => 'required|string',
+        ]);
+
+        $habitacion = Habitacion::query()
+            ->where('numero', $validated['room_number'])
+            ->firstOrFail();
+
+        if ($habitacion->status !== 'ocupada' || $habitacion->current_session_token !== $validated['session_token']) {
+            throw ValidationException::withMessages([
+                'session_token' => 'Sesion invalida. Escanea de nuevo el QR de tu habitacion.',
+            ]);
+        }
+
+        return response()->json([
+            'orders' => Order::query()
+                ->with(['services', 'habitacion'])
+                ->where('habitacion_id', $habitacion->id)
+                ->where('session_token', $validated['session_token'])
+                ->latest()
+                ->get(),
+        ]);
+    }
+
     public function tracking(Order $order)
     {
         return Inertia::render('Tracking', [
@@ -103,6 +130,8 @@ class OrderController extends Controller
             $order = Order::query()->create([
                 'habitacion_id' => $habitacion->id,
                 'room_number' => $habitacion->numero,
+                'session_token' => $habitacion->current_session_token,
+                'guest_email' => $habitacion->guest_email,
                 'service_type' => $validated['service_type'],
                 'requested_time' => $validated['service_type'] === 'limpieza' ? $validated['requested_time'] : null,
                 'description' => $validated['service_type'] === 'mantenimiento' ? $validated['description'] : null,

@@ -15,6 +15,8 @@ class Order extends Model
     protected $fillable = [
         'habitacion_id',
         'room_number',
+        'session_token',
+        'guest_email',
         'service_type',
         'requested_time',
         'description',

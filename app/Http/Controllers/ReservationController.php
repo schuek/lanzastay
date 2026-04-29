@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Activity;
 use App\Models\ActivityReservation;
 use App\Models\Habitacion;
+use App\Models\ReservaActividad;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,56 @@ use Inertia\Response;
 
 class ReservationController extends Controller
 {
+    public function storeGuestReservation(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'room_number' => ['required', 'string', 'exists:habitacions,numero'],
+            'session_token' => ['required', 'string'],
+            'actividad_id' => ['required', 'integer'],
+            'titulo' => ['required', 'string', 'max:255'],
+            'horario' => ['required', 'string', 'max:100'],
+            'precio' => ['required', 'numeric', 'min:0'],
+            'num_personas' => ['required', 'integer', 'min:1'],
+            'plazas_disponibles' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $room = Habitacion::query()->where('numero', $validated['room_number'])->firstOrFail();
+
+        if ($room->status !== 'ocupada' || $room->current_session_token !== $validated['session_token']) {
+            throw ValidationException::withMessages([
+                'session_token' => 'Sesion invalida para esta habitacion.',
+            ]);
+        }
+
+        if (!$room->guest_email) {
+            throw ValidationException::withMessages([
+                'guest_email' => 'Debes registrar el email antes de reservar.',
+            ]);
+        }
+
+        if ((int) $validated['num_personas'] > (int) $validated['plazas_disponibles']) {
+            throw ValidationException::withMessages([
+                'num_personas' => 'No hay plazas suficientes para completar la reserva.',
+            ]);
+        }
+
+        $reservation = ReservaActividad::query()->create([
+            'habitacion_id' => $room->id,
+            'actividad_id' => $validated['actividad_id'],
+            'email_cliente' => $room->guest_email,
+            'titulo_actividad' => $validated['titulo'],
+            'horario_actividad' => $validated['horario'],
+            'num_personas' => $validated['num_personas'],
+            'precio_total' => ((float) $validated['precio']) * ((int) $validated['num_personas']),
+            'fecha' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Reserva confirmada correctamente.',
+            'reservation' => $reservation,
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

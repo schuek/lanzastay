@@ -5,6 +5,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\StayCheckoutController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -20,8 +21,11 @@ Route::get('/', function () {
 });
 
 Route::post('/order', [OrderController::class, 'store'])->name('order.store');
+Route::get('/guest/welcome', [ServiceController::class, 'welcomeGuest'])->name('guest.welcome');
+Route::post('/guest/enter', [ServiceController::class, 'registerGuest'])->name('guest.enter');
 Route::get('/menu', [ServiceController::class, 'index'])->name('menu');
 Route::get('/tracking/{order}', [OrderController::class, 'tracking'])->name('orders.tracking');
+Route::post('/reservas', [ReservationController::class, 'storeGuestReservation'])->name('reservas.store');
 
 // Rutas Privadas
 Route::get('/dashboard', function () {
@@ -33,6 +37,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/admin/qrcodes', [App\Http\Controllers\Admin\QrController::class, 'index'])->name('admin.qrcodes');
 });
 
 // Admin de Servicios, Pedidos y Habitaciones
@@ -52,12 +60,12 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::put('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
 
     // --- GESTIÓN DE HABITACIONES Y QRs ---
-    Route::get('/qrcodes', [ServiceController::class, 'qrcodes'])->name('admin.qrcodes');
     Route::get('/rooms', [ServiceController::class, 'rooms'])->name('rooms.index');
     Route::post('/rooms', [ServiceController::class, 'storeRoom'])->name('rooms.store');
     Route::put('/rooms/{room}', [ServiceController::class, 'updateRoom'])->name('rooms.update');
     Route::post('/rooms/{room}/check-in', [ServiceController::class, 'checkInRoom'])->name('rooms.checkin');
     Route::post('/rooms/{room}/check-out', [ServiceController::class, 'checkOutRoom'])->name('rooms.checkout');
+    Route::post('/rooms/{room}/finalizar-estancia', [StayCheckoutController::class, 'finalize'])->name('rooms.finalize-stay');
     Route::delete('/rooms/{room}', [ServiceController::class, 'destroyRoom'])->name('rooms.destroy');
 
     // Actividades y reservas

@@ -1,11 +1,11 @@
 <script setup>
 import { ref } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link } from '@inertiajs/vue3';
+import { QrCodeIcon } from '@heroicons/vue/24/outline';
 
 const showingNavigationDropdown = ref(false);
 </script>
@@ -23,9 +23,10 @@ const showingNavigationDropdown = ref(false);
                             <!-- Logo -->
                             <div class="flex shrink-0 items-center">
                                 <Link :href="route('dashboard')">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800"
-                                    />
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-2xl font-black text-[#A64B35] tracking-tighter">LANZA<span class="text-[#2F2A26]">STAY</span></span>
+                                        <span class="text-[10px] font-bold uppercase bg-[#2F2A26] text-white px-2 py-0.5 rounded-full ml-2">Admin</span>
+                                    </div>
                                 </Link>
                             </div>
 
@@ -34,7 +35,13 @@ const showingNavigationDropdown = ref(false);
                                 class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
                             >
                                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                                    Dashboard
+                                    Panel Principal
+                                </NavLink>
+                                <NavLink :href="route('admin.qrcodes')" :active="route().current('admin.qrcodes')">
+                                    <span class="inline-flex items-center gap-2">
+                                        <QrCodeIcon class="h-4 w-4" />
+                                        Códigos QR
+                                    </span>
                                 </NavLink>
 
                                 <NavLink :href="route('orders.index')" :active="route().current('orders.index')">
@@ -156,7 +163,10 @@ const showingNavigationDropdown = ref(false);
                             :href="route('dashboard')"
                             :active="route().current('dashboard')"
                         >
-                            Dashboard
+                            Panel Principal
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('admin.qrcodes')" :active="route().current('admin.qrcodes')">
+                            Códigos QR
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('orders.index')" :active="route().current('orders.index')">
                             Pedidos Actuales

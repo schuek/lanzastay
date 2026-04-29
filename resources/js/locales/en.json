@@ -1,0 +1,4 @@
+{
+  "nav": { "menu": "Menu", "activities": "Activities", "orders": "My Orders" },
+  "actions": { "order": "Order", "book": "Book your activity", "confirm": "Confirm" }
+}

@@ -11,6 +11,7 @@ use App\Models\Habitacion;
 use App\Models\Order;
 use App\Models\Activity;
 use App\Models\ActivityReservation;
+use App\Models\ReservaActividad;
 use Illuminate\Support\Str;
 
 class ServiceController extends Controller
@@ -36,10 +37,16 @@ public function index(Request $request)
             ]);
         }
 
-        $myOrders = \App\Models\Order::with('services')
-                        ->whereHas('habitacion', function ($query) use ($roomNumber) {
-                            $query->where('numero', $roomNumber);
-                        })
+        if (!$room->guest_email) {
+            return redirect()->route('guest.welcome', [
+                'habitacion' => $room->numero,
+                'token' => $token,
+            ]);
+        }
+
+        $myOrders = \App\Models\Order::with(['services', 'habitacion'])
+                        ->where('habitacion_id', $room->id)
+                        ->where('session_token', $token)
                         ->orderBy('created_at', 'desc')
                         ->get();
 
@@ -53,6 +60,12 @@ public function index(Request $request)
             ->latest()
             ->get();
 
+        $myActivityBookings = ReservaActividad::query()
+            ->where('habitacion_id', $room->id)
+            ->where('email_cliente', $room->guest_email)
+            ->latest('fecha')
+            ->get();
+
         return Inertia::render('Menu', [
             'services' => $services,
             'categories' => $categories,
@@ -62,6 +75,53 @@ public function index(Request $request)
             'currentRoom' => $roomNumber,
             'currentRoomId' => $room?->id,
             'sessionToken' => $token,
+            'guestEmail' => $room->guest_email,
+            'myActivityBookings' => $myActivityBookings,
+        ]);
+    }
+
+    public function welcomeGuest(Request $request)
+    {
+        $roomNumber = $request->query('habitacion');
+        $token = $request->query('token');
+        $room = Habitacion::query()->where('numero', $roomNumber)->first();
+
+        if (!$room || $room->status !== 'ocupada' || !$token || $token !== $room->current_session_token) {
+            return Inertia::render('ClientAccessDenied', [
+                'message' => 'Sesion no valida para esta habitacion. Solicita un nuevo acceso en recepcion.',
+            ]);
+        }
+
+        return Inertia::render('WelcomeGuest', [
+            'roomNumber' => $room->numero,
+            'sessionToken' => $token,
+            'guestEmail' => $room->guest_email,
+        ]);
+    }
+
+    public function registerGuest(Request $request)
+    {
+        $validated = $request->validate([
+            'room_number' => 'required|string|exists:habitacions,numero',
+            'session_token' => 'required|string',
+            'guest_email' => 'required|email:rfc,dns|max:255',
+        ]);
+
+        $room = Habitacion::query()->where('numero', $validated['room_number'])->firstOrFail();
+
+        if ($room->status !== 'ocupada' || $room->current_session_token !== $validated['session_token']) {
+            return Inertia::render('ClientAccessDenied', [
+                'message' => 'Sesion no valida para esta habitacion. Solicita un nuevo acceso en recepcion.',
+            ]);
+        }
+
+        $room->update([
+            'guest_email' => strtolower($validated['guest_email']),
+        ]);
+
+        return redirect()->route('menu', [
+            'habitacion' => $room->numero,
+            'token' => $validated['session_token'],
         ]);
     }
 
@@ -149,7 +209,7 @@ public function admin()
     $codes = [];
 
     foreach ($rooms as $room) {
-        $url = route('menu', [
+        $url = route('guest.welcome', [
             'habitacion' => $room->numero,
             'token' => $room->current_session_token,
         ]);
@@ -217,6 +277,7 @@ public function admin()
             'numero' => $request->number,
             'status' => $request->status,
             'current_session_token' => $token,
+            'guest_email' => $request->status === 'ocupada' ? $room->guest_email : null,
         ]);
 
         return redirect()->back();
@@ -234,6 +295,7 @@ public function admin()
         $room->update([
             'status' => 'ocupada',
             'current_session_token' => Str::random(40),
+            'guest_email' => null,
         ]);
 
         return redirect()->back();
@@ -249,6 +311,7 @@ public function admin()
         $room->update([
             'status' => 'disponible',
             'current_session_token' => null,
+            'guest_email' => null,
         ]);
 
         return redirect()->back();

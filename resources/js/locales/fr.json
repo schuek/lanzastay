@@ -1,0 +1,4 @@
+{
+  "nav": { "menu": "Menu", "activities": "Activités", "orders": "Mes commandes" },
+  "actions": { "order": "Commander", "book": "Réservez votre activité", "confirm": "Confirmer" }
+}

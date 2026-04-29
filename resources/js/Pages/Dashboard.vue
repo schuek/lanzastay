@@ -60,11 +60,14 @@ const adminOptions = [
 </script>
 
 <template>
-    <Head title="Panel de Administración" />
+    <Head title="Panel Principal" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Panel de Control</h2>
+            <div class="flex items-center gap-1">
+                <span class="text-2xl font-black text-[#A64B35] tracking-tighter">LANZA<span class="text-[#2F2A26]">STAY</span></span>
+                <span class="text-[10px] font-bold uppercase bg-[#2F2A26] text-white px-2 py-0.5 rounded-full ml-2">Admin</span>
+            </div>
         </template>
 
         <div class="py-12">

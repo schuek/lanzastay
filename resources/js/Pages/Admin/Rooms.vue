@@ -46,6 +46,11 @@ const removeRoom = (roomId) => {
 
 const checkIn = (roomId) => router.post(route('rooms.checkin', roomId));
 const checkOut = (roomId) => router.post(route('rooms.checkout', roomId));
+const finalizeStay = (roomId) => {
+    if (confirm('Se enviará la factura final al cliente y se cerrará la estancia. ¿Continuar?')) {
+        router.post(route('rooms.finalize-stay', roomId));
+    }
+};
 </script>
 
 <template>
@@ -102,6 +107,7 @@ const checkOut = (roomId) => router.post(route('rooms.checkout', roomId));
                                         <button v-else @click="startEdit(room)" class="px-3 py-1 rounded-md bg-[#1A1A1A] text-white text-xs font-bold">Editar</button>
                                         <button @click="checkIn(room.id)" class="px-3 py-1 rounded-md bg-[#1A1A1A] text-white text-xs font-bold">Check-in</button>
                                         <button @click="checkOut(room.id)" class="px-3 py-1 rounded-md bg-[#D45D3B] text-white text-xs font-bold">Check-out</button>
+                                        <button @click="finalizeStay(room.id)" class="px-3 py-1 rounded-md bg-emerald-600 text-white text-xs font-bold">Finalizar Estancia</button>
                                         <button @click="removeRoom(room.id)" class="px-3 py-1 rounded-md border border-red-300 text-red-600 text-xs font-bold">Eliminar</button>
                                     </div>
                                 </td>
