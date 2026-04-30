@@ -179,10 +179,14 @@ public function admin()
             'price' => 'required|numeric|min:0',
             'category_id' => 'required|numeric',
             'service_type' => 'required|in:comida,limpieza,mantenimiento',
+            'service_category' => 'nullable|string|in:Comida,Bebida,Postre,Limpieza,Mantenimiento',
+            'ingredients' => 'nullable|array',
+            'ingredients.*' => 'string|max:120',
+            'is_vegan' => 'nullable|boolean',
             'image_url' => 'nullable|url|max:2048',
         ]);
 
-        Service::create($validated);
+        Service::create($this->normalizeServicePayload($validated));
         return to_route('admin.index');
     }
 
@@ -194,12 +198,36 @@ public function admin()
             'price' => 'required|numeric|min:0',
             'category_id' => 'required|numeric',
             'service_type' => 'required|in:comida,limpieza,mantenimiento',
+            'service_category' => 'nullable|string|in:Comida,Bebida,Postre,Limpieza,Mantenimiento',
+            'ingredients' => 'nullable|array',
+            'ingredients.*' => 'string|max:120',
+            'is_vegan' => 'nullable|boolean',
             'image_url' => 'nullable|url|max:2048',
         ]);
 
-        $service->update($validated);
+        $service->update($this->normalizeServicePayload($validated));
 
         return to_route('admin.index');
+    }
+
+    private function normalizeServicePayload(array $validated): array
+    {
+        $serviceCategory = $validated['service_category'] ?? null;
+
+        if (!$serviceCategory) {
+            $serviceCategory = match ($validated['service_type']) {
+                'limpieza' => 'Limpieza',
+                'mantenimiento' => 'Mantenimiento',
+                default => 'Comida',
+            };
+        }
+
+        return [
+            ...$validated,
+            'service_category' => $serviceCategory,
+            'ingredients' => array_values(array_filter($validated['ingredients'] ?? [])),
+            'is_vegan' => (bool) ($validated['is_vegan'] ?? false),
+        ];
     }
 
     public function qrcodes()
