@@ -65,6 +65,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::put('/rooms/{room}', [ServiceController::class, 'updateRoom'])->name('rooms.update');
     Route::post('/rooms/{room}/check-in', [ServiceController::class, 'checkInRoom'])->name('rooms.checkin');
     Route::post('/rooms/{room}/check-out', [ServiceController::class, 'checkOutRoom'])->name('rooms.checkout');
+    Route::get('/rooms/{room}/check-out-factura', [StayCheckoutController::class, 'checkoutAndDownloadInvoice'])->name('rooms.checkout.invoice');
     Route::post('/rooms/{room}/finalizar-estancia', [StayCheckoutController::class, 'finalize'])->name('rooms.finalize-stay');
     Route::delete('/rooms/{room}', [ServiceController::class, 'destroyRoom'])->name('rooms.destroy');
 

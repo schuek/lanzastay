@@ -11,9 +11,9 @@ const orderState = ref(props?.order ?? null);
 let pollingInterval = null;
 
 const stepLabelsByType = {
-    comida: ['Recibido', 'Preparando', 'Entregado'],
-    limpieza: ['Recibido', 'Limpiando', 'Terminado'],
-    mantenimiento: ['Recibido', 'Reparando', 'Solucionado'],
+    comida: ['Recibido', 'Preparando', 'En camino', 'Entregado'],
+    limpieza: ['Recibido', 'Limpiando', 'En camino', 'Terminado'],
+    mantenimiento: ['Recibido', 'Reparando', 'En camino', 'Solucionado'],
 };
 
 const steps = computed(() => {
@@ -23,7 +23,8 @@ const steps = computed(() => {
     return [
         { key: 'recibido', label: labels[0] },
         { key: 'en_proceso', label: labels[1] },
-        { key: 'completado', label: labels[2] },
+        { key: 'en_camino', label: labels[2] },
+        { key: 'completado', label: labels[3] },
     ];
 });
 

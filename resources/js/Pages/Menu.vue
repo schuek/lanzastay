@@ -117,9 +117,9 @@ const statusLabel = (status) => ({ pendiente: 'Pendiente', confirmada: 'Confirma
 const orderStatusClass = (status) => status === 'completado' ? 'text-gray-500 bg-gray-100' : 'text-[#A64B35] bg-[#A64B35]/10';
 const orderStatusLabel = (order) => {
     const labelsByType = {
-        comida: { recibido: 'Pendiente', en_proceso: 'En cocina', completado: 'Completado' },
-        limpieza: { recibido: 'Pendiente', en_proceso: 'En limpieza', completado: 'Completado' },
-        mantenimiento: { recibido: 'Pendiente', en_proceso: 'En revisión', completado: 'Completado' },
+        comida: { recibido: 'Pendiente', en_proceso: 'En cocina', en_camino: 'En camino', completado: 'Completado' },
+        limpieza: { recibido: 'Pendiente', en_proceso: 'En limpieza', en_camino: 'En camino', completado: 'Completado' },
+        mantenimiento: { recibido: 'Pendiente', en_proceso: 'En revisión', en_camino: 'En camino', completado: 'Completado' },
     };
     return labelsByType[order.service_type]?.[order.status] ?? order.status;
 };
@@ -128,7 +128,7 @@ const showNotification = (message, type = 'success') => {
     notification.value = { message, type };
     setTimeout(() => {
         notification.value = null;
-    }, 2800);
+    }, 5000);
 };
 const mostrarNotificacion = (message, type = 'success') => showNotification(message, type);
 
@@ -191,7 +191,8 @@ const fetchMyOrders = async () => {
             params: { room_number: props.currentRoom, session_token: props.sessionToken },
         });
         const fetchedOrders = response.data?.orders ?? [];
-        fetchedOrders.forEach((order) => {
+        const activeOrders = fetchedOrders.filter((order) => order.status !== 'completado');
+        activeOrders.forEach((order) => {
             const previousStatus = orderStatusSnapshot.value[order.id];
             if (previousStatus && previousStatus !== order.status) {
                 mostrarNotificacion(`Tu pedido #${order.id} cambió a ${orderStatusLabel(order)}.`);
@@ -362,7 +363,7 @@ onMounted(() => {
     window.history.replaceState({ tab: 'home' }, '');
     window.addEventListener('popstate', handlePopState);
     fetchMyOrders();
-    pollingInterval = setInterval(fetchMyOrders, 5000);
+    pollingInterval = setInterval(fetchMyOrders, 12000);
     setTimeout(() => {
         mostrarNotificacion('Toast activo: tu pedido está en camino.');
     }, 1200);
@@ -387,11 +388,11 @@ onUnmounted(() => {
             leave-from-class="opacity-100"
             leave-to-class="opacity-0"
         >
-            <div v-if="notification" class="fixed top-20 left-1/2 -translate-x-1/2 z-[70] w-[90%] max-w-sm rounded-xl shadow-lg bg-[#2F2A26] border border-[#2F2A26]/30">
+            <div v-if="notification" class="fixed top-20 left-1/2 -translate-x-1/2 z-[70] w-[90%] max-w-sm rounded-xl shadow-sm bg-white border border-gray-200">
                 <div class="p-3 flex items-center gap-2">
                     <CheckCircle2 v-if="notification.type === 'success'" class="w-4 h-4 text-[#A64B35]" />
                     <TriangleAlert v-else class="w-4 h-4 text-[#A64B35]" />
-                    <p class="text-xs text-white">{{ notification.message }}</p>
+                    <p class="text-xs text-gray-700">{{ notification.message }}</p>
                 </div>
             </div>
         </Transition>
@@ -615,15 +616,15 @@ onUnmounted(() => {
 
         <nav class="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-[#2F2A26]/10">
             <div class="max-w-md mx-auto h-16 px-8 flex items-center justify-between">
-                <button @click="changeTab('home')" :class="currentTab === 'home' ? 'text-[#2F2A26]' : 'text-[#2F2A26]/50'" class="flex flex-col items-center">
+                <button @click="changeTab('home')" :class="currentTab === 'home' ? 'text-[#A64B35]' : 'text-gray-400'" class="flex flex-col items-center">
                     <Home class="w-5 h-5" />
                     <span class="text-[10px]">INICIO</span>
                 </button>
-                <button @click="changeTab('orders')" :class="currentTab === 'orders' ? 'text-[#A64B35]' : 'text-[#A64B35]/55'" class="flex flex-col items-center">
+                <button @click="changeTab('orders')" :class="currentTab === 'orders' ? 'text-[#A64B35]' : 'text-gray-400'" class="flex flex-col items-center">
                     <ReceiptText class="w-5 h-5" />
                     <span class="text-[10px]">MIS PEDIDOS</span>
                 </button>
-                <button @click="changeTab('profile')" :class="currentTab === 'profile' ? 'text-[#2F2A26]' : 'text-[#2F2A26]/50'" class="flex flex-col items-center">
+                <button @click="changeTab('profile')" :class="currentTab === 'profile' ? 'text-[#A64B35]' : 'text-gray-400'" class="flex flex-col items-center">
                     <User class="w-5 h-5" />
                     <span class="text-[10px]">MI PERFIL</span>
                 </button>

@@ -175,7 +175,7 @@ class OrderController extends Controller
     public function update(\App\Models\Order $order, Request $request)
     {
         $validated = $request->validate([
-            'status' => 'required|in:recibido,en_proceso,completado',
+            'status' => 'required|in:recibido,en_proceso,en_camino,completado',
         ]);
 
         $order->update(['status' => $validated['status']]);

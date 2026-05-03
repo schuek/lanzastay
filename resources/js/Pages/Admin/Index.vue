@@ -47,15 +47,15 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
     <AuthenticatedLayout>
         <template #header>
             <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-[#1A1A1A] leading-tight">Gestión del Catálogo</h2>
-                <Link :href="route('services.create')" class="bg-[#D45D3B] hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-md transition">
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Gestión del Catálogo</h2>
+                <Link :href="route('services.create')" class="bg-[#A64B35] hover:opacity-90 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm transition">
                     <PlusCircleIcon class="w-5 h-5" />
                     Nuevo Servicio
                 </Link>
             </div>
         </template>
 
-        <div class="py-12 bg-[#F5F5F5] min-h-screen">
+        <div class="py-12 bg-gray-50 min-h-screen">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
                 <div class="flex space-x-2 mb-6 overflow-x-auto pb-2">
@@ -76,15 +76,17 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
                     </button>
                 </div>
 
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
+                <div class="bg-white overflow-hidden rounded-2xl shadow-sm border border-gray-100">
 
-                    <table v-if="filteredServices.length > 0" class="min-w-full divide-y divide-gray-200">
+                    <table v-if="filteredServices.length > 0" class="min-w-full divide-y divide-gray-200 rounded-2xl">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen URL</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
@@ -97,18 +99,28 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
                                 <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                                     {{ service.description }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#D45D3B]">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#A64B35]">
                                     {{ formatPrice(service.price) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">
                                     {{ service.service_type || 'comida' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-[#A64B35]/10 text-[#A64B35]">
+                                        {{ service.categoria_restaurante || '-' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                                        {{ service.horario || '-' }}
+                                    </span>
                                 </td>
                                 <td class="px-6 py-4 text-xs text-gray-500 max-w-xs truncate">
                                     {{ service.image_url || '—' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex justify-end gap-3">
-                                        <Link :href="route('services.edit', service.id)" class="text-[#D45D3B] hover:opacity-70">
+                                        <Link :href="route('services.edit', service.id)" class="text-[#A64B35] hover:opacity-70">
                                             <PencilSquareIcon class="w-5 h-5" />
                                         </Link>
                                         <button @click="deleteService(service.id)" class="text-red-600 hover:text-red-900">
@@ -126,7 +138,7 @@ const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency
                         </div>
                         <h3 class="text-lg font-medium text-gray-900">Esta sección está vacía</h3>
                         <p class="text-gray-500 mb-6">No hay servicios creados en esta categoría todavía.</p>
-                        <Link :href="route('services.create')" class="text-[#D45D3B] font-bold hover:underline">
+                        <Link :href="route('services.create')" class="text-[#A64B35] font-bold hover:underline">
                             ¡Crea el primero ahora!
                         </Link>
                     </div>

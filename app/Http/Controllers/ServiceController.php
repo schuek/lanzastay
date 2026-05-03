@@ -180,6 +180,8 @@ public function admin()
             'category_id' => 'required|numeric',
             'service_type' => 'required|in:comida,limpieza,mantenimiento',
             'service_category' => 'nullable|string|in:Comida,Bebida,Postre,Limpieza,Mantenimiento',
+            'categoria_restaurante' => 'nullable|string|in:Comida,Bebida,Postre',
+            'horario' => 'nullable|string|in:Desayuno,Almuerzo,Cena,Todo el dia',
             'ingredients' => 'nullable|array',
             'ingredients.*' => 'string|max:120',
             'is_vegan' => 'nullable|boolean',
@@ -199,6 +201,8 @@ public function admin()
             'category_id' => 'required|numeric',
             'service_type' => 'required|in:comida,limpieza,mantenimiento',
             'service_category' => 'nullable|string|in:Comida,Bebida,Postre,Limpieza,Mantenimiento',
+            'categoria_restaurante' => 'nullable|string|in:Comida,Bebida,Postre',
+            'horario' => 'nullable|string|in:Desayuno,Almuerzo,Cena,Todo el dia',
             'ingredients' => 'nullable|array',
             'ingredients.*' => 'string|max:120',
             'is_vegan' => 'nullable|boolean',
@@ -222,9 +226,19 @@ public function admin()
             };
         }
 
+        $isRestaurantService = $validated['service_type'] === 'comida';
+        $restaurantCategory = $isRestaurantService
+            ? ($validated['categoria_restaurante'] ?? ($serviceCategory === 'Bebida' || $serviceCategory === 'Postre' ? $serviceCategory : 'Comida'))
+            : null;
+        $schedule = $isRestaurantService
+            ? ($validated['horario'] ?? 'Todo el dia')
+            : null;
+
         return [
             ...$validated,
             'service_category' => $serviceCategory,
+            'categoria_restaurante' => $restaurantCategory,
+            'horario' => $schedule,
             'ingredients' => array_values(array_filter($validated['ingredients'] ?? [])),
             'is_vegan' => (bool) ($validated['is_vegan'] ?? false),
         ];
@@ -320,10 +334,14 @@ public function admin()
 
     public function checkInRoom(Habitacion $room)
     {
+        $validated = request()->validate([
+            'guest_email' => 'required|email:rfc,dns|max:255',
+        ]);
+
         $room->update([
             'status' => 'ocupada',
             'current_session_token' => Str::random(40),
-            'guest_email' => null,
+            'guest_email' => strtolower($validated['guest_email']),
         ]);
 
         return redirect()->back();

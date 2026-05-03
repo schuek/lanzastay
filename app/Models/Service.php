@@ -17,6 +17,8 @@ class Service extends Model
         'price',
         'service_type',
         'service_category',
+        'categoria_restaurante',
+        'horario',
         'ingredients',
         'is_vegan',
         'image_url',
