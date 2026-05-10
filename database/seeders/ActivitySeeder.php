@@ -58,7 +58,52 @@ class ActivitySeeder extends Seeder
                 'max_seats' => 35,
                 'date_time' => Carbon::now()->addDays(6)->setTime(10, 00),
                 'image_url' => null // Dejamos esta vacía para que veas que el fondo elegante funciona
-            ]
+            ],
+            [
+                'name' => 'Circuito Spa & Relax',
+                'description' => 'Relájate en nuestro circuito de aguas termales, sauna y baño turco. Ideal para desconectar.',
+                'type' => 'hotel_activity',
+                'price' => 25.00,
+                'max_seats' => 15,
+                'date_time' => Carbon::now()->addDay()->setTime(10, 0),
+                'image_url' => '/images/spa.avif',
+            ],
+            [
+                'name' => 'Yoga al Amanecer',
+                'description' => 'Empieza el día con energía y paz interior frente al mar. Apto para todos los niveles.',
+                'type' => 'hotel_activity',
+                'price' => 0,
+                'max_seats' => 20,
+                'date_time' => Carbon::now()->addDay()->setTime(8, 0),
+                'image_url' => '/images/yoga.avif',
+            ],
+            [
+                'name' => 'Acceso Gimnasio',
+                'description' => 'Mantente en forma durante tus vacaciones con nuestras máquinas de última generación.',
+                'type' => 'hotel_activity',
+                'price' => 0,
+                'max_seats' => 30,
+                'date_time' => Carbon::now()->addDay()->setTime(6, 0),
+                'image_url' => '/images/gym.avif',
+            ],
+            [
+                'name' => 'Música en Vivo: Noche Acústica',
+                'description' => 'Disfruta de una velada mágica con artistas locales en nuestra terraza principal.',
+                'type' => 'hotel_activity',
+                'price' => 0,
+                'max_seats' => 50,
+                'date_time' => Carbon::now()->addDay()->setTime(21, 0),
+                'image_url' => '/images/musica.avif',
+            ],
+            [
+                'name' => 'Búsqueda del Tesoro Pirata',
+                'description' => '[niños] ¡Los más pequeños se divertirán buscando pistas por todo el hotel para encontrar el cofre oculto!',
+                'type' => 'hotel_activity',
+                'price' => 0,
+                'max_seats' => 20,
+                'date_time' => Carbon::now()->addDay()->setTime(11, 0),
+                'image_url' => '/images/tesoro.avif',
+            ],
         ];
 
         foreach ($activities as $activity) {

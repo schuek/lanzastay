@@ -66,10 +66,10 @@
             @forelse($reservas as $reserva)
                 <tr>
                     <td>#{{ $reserva->id }}</td>
-                    <td>{{ \Illuminate\Support\Carbon::parse($reserva->fecha)->format('d/m/Y H:i') }}</td>
-                    <td>{{ $reserva->titulo_actividad }}</td>
-                    <td>{{ $reserva->num_personas }}</td>
-                    <td>{{ number_format((float) $reserva->precio_total, 2, ',', '.') }} EUR</td>
+                    <td>{{ $reserva->created_at?->format('d/m/Y H:i') }}</td>
+                    <td>{{ $reserva->activity?->name ?? 'Actividad' }}</td>
+                    <td>{{ $reserva->seats_booked }}</td>
+                    <td>{{ number_format((float) $reserva->total_price, 2, ',', '.') }} EUR</td>
                 </tr>
             @empty
                 <tr><td colspan="5">No hay reservas registradas.</td></tr>

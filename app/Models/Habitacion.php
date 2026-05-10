@@ -25,8 +25,8 @@ class Habitacion extends Model
         return $this->hasMany(ActivityReservation::class, 'room_id');
     }
 
-    public function generateQrUrl()
+    public function generateQrUrl(): string
     {
-        return rtrim(config("app.url"), '/') . '/guest/welcome' . '?habitacion=' . $this->numero . '&token=' . $this->current_session_token;
+        return rtrim(config('app.url'), '/').'/menu/'.$this->numero;
     }
 }

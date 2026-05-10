@@ -19,7 +19,7 @@ class ActivityController extends Controller
                 ->with(['activity', 'room'])
                 ->latest()
                 ->get(),
-            'activeTab' => 'management',
+            'activeTab' => 'reception',
         ]);
     }
 

@@ -1,8 +1,10 @@
 <script setup>
+import { computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import {
     ClipboardDocumentCheckIcon,
+    HomeIcon,
     PencilSquareIcon,
     QrCodeIcon,
     UserGroupIcon,
@@ -14,16 +16,28 @@ const adminOptions = [
     {
         title: 'Pedidos Actuales',
         description: 'Ver y gestionar los pedidos entrantes de las habitaciones.',
-        route: 'orders.index',
+        route: 'admin.orders',
+        roles: ['admin', 'cocina', 'room_service'],
         icon: ClipboardDocumentCheckIcon,
         color: 'text-green-600',
         bg: 'bg-green-50',
         border: 'hover:border-green-200'
     },
     {
+        title: 'Habitaciones',
+        description: 'Añadir, editar o eliminar habitaciones y estados',
+        route: 'habitaciones.index',
+        roles: ['admin', 'recepcion', 'limpieza', 'mantenimiento'],
+        icon: HomeIcon,
+        color: 'text-[#A64B35]',
+        bg: 'bg-orange-50',
+        border: 'hover:border-orange-200'
+    },
+    {
         title: 'Editar Menú y Servicios',
         description: 'Añadir platos, cambiar precios o modificar servicios.',
         route: 'admin.index',
+        roles: ['admin'],
         icon: PencilSquareIcon,
         color: 'text-blue-600',
         bg: 'bg-blue-50',
@@ -32,7 +46,8 @@ const adminOptions = [
     {
         title: 'Generador de QRs',
         description: 'Imprimir códigos para las habitaciones (Próximamente).',
-        route: 'admin.qrcodes', // Lo dejamos temporalmente aquí hasta crear la ruta
+        route: 'admin.qrcodes',
+        roles: ['admin', 'recepcion'],
         icon: QrCodeIcon,
         color: 'text-purple-600',
         bg: 'bg-purple-50',
@@ -42,6 +57,7 @@ const adminOptions = [
         title: 'Actividades y Reservas',
         description: 'Gestionar excursiones, actividades y validar reservas de recepción.',
         route: 'activities.index',
+        roles: ['admin', 'recepcion'],
         icon: TicketIcon,
         color: 'text-[#A64B35]',
         bg: 'bg-[#A64B35]/10',
@@ -50,35 +66,37 @@ const adminOptions = [
     {
         title: 'Personal',
         description: 'Gestionar perfil y cuenta de administrador.',
-        route: 'profile.edit',
+        route: 'profile.edit', // Esta sí existe en Laravel por defecto
+        roles: ['admin', 'recepcion', 'cocina', 'room_service', 'limpieza', 'mantenimiento'],
         icon: UserGroupIcon,
         color: 'text-gray-600',
         bg: 'bg-gray-50',
         border: 'hover:border-gray-200'
     },
 ];
+
+const page = usePage();
+
+const currentUserRole = computed(() => page.props.auth?.user?.role ?? null);
+
+const filteredOptions = computed(() =>
+    adminOptions.filter((option) => option.roles.includes(currentUserRole.value))
+);
 </script>
 
 <template>
     <Head title="Panel Principal" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex items-center gap-1">
-                <span class="text-2xl font-black text-[#A64B35] tracking-tighter">LANZA<span class="text-[#2F2A26]">STAY</span></span>
-                <span class="text-[10px] font-bold uppercase bg-[#2F2A26] text-white px-2 py-0.5 rounded-full ml-2">Admin</span>
-            </div>
-        </template>
-
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Link
-                        v-for="option in adminOptions"
+                        v-for="option in filteredOptions"
                         :key="option.title"
-                        :href="route(option.route)"
+                        :href="option.url ?? route(option.route)"
                         class="bg-white overflow-hidden shadow-sm sm:rounded-xl p-8 transition-all duration-200 hover:shadow-lg border border-transparent flex items-start gap-6 group"
                         :class="option.border"
                     >
@@ -113,3 +131,4 @@ const adminOptions = [
         </div>
     </AuthenticatedLayout>
 </template>
+

@@ -7,17 +7,57 @@ use App\Models\Category;
 use App\Models\Service;
 use App\Models\Room;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
         // --- 0. USUARIOS (Para que nunca se borre tu acceso) ---
-        User::create([
-            'name' => 'Admin LanzaStay',
-            'email' => 'admin@lanzastay.com',
-            'password' => bcrypt('12345678'), // Tu contraseña será 12345678
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@lanzastay.com'],
+            [
+                'name' => 'Admin LanzaStay',
+                'role' => 'admin',
+                'password' => Hash::make('12345678'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'cocina@lanzastay.com'],
+            [
+                'name' => 'Chef',
+                'role' => 'cocina',
+                'password' => Hash::make('password'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'recepcion@lanzastay.com'],
+            [
+                'name' => 'Recepción',
+                'role' => 'recepcion',
+                'password' => Hash::make('password'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'roomservice@lanzastay.com'],
+            [
+                'name' => 'Camarero',
+                'role' => 'room_service',
+                'password' => Hash::make('password'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'limpieza@lanzastay.com'],
+            [
+                'name' => 'Limpieza',
+                'role' => 'limpieza',
+                'password' => Hash::make('password'),
+            ]
+        );
 
         // --- 1. CREAMOS LAS TRES GRANDES ÁREAS ---
         $restaurante = Category::create(['name' => 'Restaurante', 'icon' => 'CakeIcon']);

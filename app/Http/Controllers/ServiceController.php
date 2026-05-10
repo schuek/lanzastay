@@ -9,84 +9,30 @@ use App\Models\Category;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Models\Habitacion;
 use App\Models\Order;
-use App\Models\Activity;
-use App\Models\ActivityReservation;
-use App\Models\ReservaActividad;
 use Illuminate\Support\Str;
 
 class ServiceController extends Controller
 {
-public function index(Request $request)
-    {
-        $services = Service::with('category')->get();
-        $categories = Category::all();
-
-        $roomNumber = $request->query('habitacion', $request->query('room', '101'));
-        $token = $request->query('token');
-        $room = Habitacion::query()->where('numero', $roomNumber)->first();
-
-        if (!$room || $room->status !== 'ocupada') {
-            return Inertia::render('ClientAccessDenied', [
-                'message' => 'Bienvenido a LanzaStay. Por favor, realice su check-in en recepción para empezar a usar nuestros servicios',
-            ]);
-        }
-
-        if (!$token || $token !== $room->current_session_token) {
-            return Inertia::render('ClientAccessDenied', [
-                'message' => 'Sesion no valida para esta habitacion. Solicita un nuevo acceso en recepcion.',
-            ]);
-        }
-
-        if (!$room->guest_email) {
-            return redirect()->route('guest.welcome', [
-                'habitacion' => $room->numero,
-                'token' => $token,
-            ]);
-        }
-
-        $myOrders = \App\Models\Order::with(['services', 'habitacion'])
-                        ->where('habitacion_id', $room->id)
-                        ->where('session_token', $token)
-                        ->orderBy('created_at', 'desc')
-                        ->get();
-
-        $activities = Activity::query()
-            ->orderBy('date_time')
-            ->get();
-
-        $myReservations = ActivityReservation::query()
-            ->with('activity')
-            ->where('room_id', $room->id)
-            ->latest()
-            ->get();
-
-        $myActivityBookings = ReservaActividad::query()
-            ->where('habitacion_id', $room->id)
-            ->where('email_cliente', $room->guest_email)
-            ->latest('fecha')
-            ->get();
-
-        return Inertia::render('Menu', [
-            'services' => $services,
-            'categories' => $categories,
-            'myOrders' => $myOrders,
-            'activities' => $activities,
-            'myReservations' => $myReservations,
-            'currentRoom' => $roomNumber,
-            'currentRoomId' => $room?->id,
-            'sessionToken' => $token,
-            'guestEmail' => $room->guest_email,
-            'myActivityBookings' => $myActivityBookings,
-        ]);
-    }
-
     public function welcomeGuest(Request $request)
     {
         $roomNumber = $request->query('habitacion');
         $token = $request->query('token');
         $room = Habitacion::query()->where('numero', $roomNumber)->first();
 
-        if (!$room || $room->status !== 'ocupada' || !$token || $token !== $room->current_session_token) {
+        if (! $room || $room->status !== 'ocupada') {
+            return Inertia::render('ClientAccessDenied', [
+                'message' => 'Bienvenido a LanzaStay. Por favor, realice su check-in en recepción para empezar a usar nuestros servicios.',
+            ]);
+        }
+
+        if ($token !== null && $token !== '' && $token !== $room->current_session_token) {
+            return Inertia::render('ClientAccessDenied', [
+                'message' => 'Sesion no valida para esta habitacion. Solicita un nuevo acceso en recepcion.',
+            ]);
+        }
+
+        $sessionToken = $room->current_session_token ?? '';
+        if ($sessionToken === '') {
             return Inertia::render('ClientAccessDenied', [
                 'message' => 'Sesion no valida para esta habitacion. Solicita un nuevo acceso en recepcion.',
             ]);
@@ -94,7 +40,7 @@ public function index(Request $request)
 
         return Inertia::render('WelcomeGuest', [
             'roomNumber' => $room->numero,
-            'sessionToken' => $token,
+            'sessionToken' => $sessionToken,
             'guestEmail' => $room->guest_email,
         ]);
     }
@@ -119,9 +65,8 @@ public function index(Request $request)
             'guest_email' => strtolower($validated['guest_email']),
         ]);
 
-        return redirect()->route('menu', [
-            'habitacion' => $room->numero,
-            'token' => $validated['session_token'],
+        return redirect()->route('menu.show', [
+            'numero' => $room->numero,
         ]);
     }
 

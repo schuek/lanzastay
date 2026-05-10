@@ -8,7 +8,7 @@ const props = defineProps({
     reservations: Array,
     activeTab: {
         type: String,
-        default: 'management',
+        default: 'reception',
     },
 });
 
@@ -69,7 +69,11 @@ const busTours = computed(() => props.activities.filter((item) => item.type === 
 const hotelActivities = computed(() => props.activities.filter((item) => item.type === 'hotel_activity'));
 
 const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value || 0);
-const formatDateTime = (value) => new Date(value).toLocaleString('es-ES');
+const formatDateTime = (value) => {
+    if (value == null || value === '') return '—';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('es-ES');
+};
 const toDateTimeInput = (value) => {
     if (!value) return '';
     const date = new Date(value);
@@ -90,11 +94,21 @@ const toDateTimeInput = (value) => {
         <div class="py-10 bg-[#FFFFFF] min-h-screen">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 <div class="flex gap-2">
-                    <button @click="tab = 'management'" :class="tab === 'management' ? 'bg-[#A64B35] text-white' : 'bg-white text-[#2F2A26]'" class="px-4 py-2 rounded-lg border border-[#2F2A26]/15 font-bold">
-                        Gestión
-                    </button>
-                    <button @click="tab = 'reception'" :class="tab === 'reception' ? 'bg-[#A64B35] text-white' : 'bg-white text-[#2F2A26]'" class="px-4 py-2 rounded-lg border border-[#2F2A26]/15 font-bold">
+                    <button
+                        type="button"
+                        @click="tab = 'reception'"
+                        :class="tab === 'reception' ? 'bg-[#A64B35] text-white border-transparent' : 'bg-white text-[#2F2A26] border-[#2F2A26]'"
+                        class="px-4 py-2 rounded-lg border font-bold"
+                    >
                         Recepción
+                    </button>
+                    <button
+                        type="button"
+                        @click="tab = 'management'"
+                        :class="tab === 'management' ? 'bg-[#A64B35] text-white border-transparent' : 'bg-white text-[#2F2A26] border-[#2F2A26]'"
+                        class="px-4 py-2 rounded-lg border font-bold"
+                    >
+                        Gestión de actividades
                     </button>
                 </div>
 

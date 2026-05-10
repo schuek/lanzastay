@@ -6,7 +6,7 @@ use App\Mail\InvoiceMail;
 use App\Mail\StayCheckoutMail;
 use App\Models\Habitacion;
 use App\Models\Order;
-use App\Models\ReservaActividad;
+use App\Models\ActivityReservation;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
@@ -26,14 +26,15 @@ class StayCheckoutController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        $reservas = ReservaActividad::query()
-            ->where('habitacion_id', $room->id)
-            ->where('email_cliente', $room->guest_email)
-            ->orderBy('fecha')
+        $reservas = ActivityReservation::query()
+            ->with('activity')
+            ->where('room_id', $room->id)
+            ->whereIn('status', ['pendiente', 'confirmada'])
+            ->orderBy('created_at')
             ->get();
 
         $totalOrders = (float) $orders->sum('total_price');
-        $totalReservas = (float) $reservas->sum('precio_total');
+        $totalReservas = (float) $reservas->sum('total_price');
         $grandTotal = $totalOrders + $totalReservas;
 
         $pdfBinary = Pdf::loadView('pdf.stay-checkout', [
@@ -81,14 +82,16 @@ class StayCheckoutController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        $reservas = ReservaActividad::query()
-            ->where('habitacion_id', $room->id)
-            ->when($guestEmail, fn ($query) => $query->where('email_cliente', $guestEmail))
-            ->orderBy('fecha')
+        $reservas = ActivityReservation::query()
+            ->with('activity')
+            ->where('room_id', $room->id)
+            ->where('session_token', $sessionToken)
+            ->whereIn('status', ['pendiente', 'confirmada'])
+            ->orderBy('created_at')
             ->get();
 
         $totalOrders = (float) $orders->sum('total_price');
-        $totalReservas = (float) $reservas->sum('precio_total');
+        $totalReservas = (float) $reservas->sum('total_price');
         $grandTotal = $totalOrders + $totalReservas;
 
         Order::query()

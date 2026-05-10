@@ -1,112 +1,78 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { PrinterIcon } from '@heroicons/vue/24/outline';
+import { nextTick, ref } from 'vue';
+import QrcodeVue from 'qrcode.vue';
 
-const props = defineProps({
+defineProps({
     habitaciones: {
         type: Array,
         default: () => [],
     },
 });
 
-const printAll = () => {
+const getQrValue = (habitacion) => `${window.location.origin}/menu/${habitacion.numero}`;
+
+const habitacionParaImprimir = ref(null);
+
+const printCard = async (habitacion) => {
+    habitacionParaImprimir.value = habitacion;
+    await nextTick();
     window.print();
-};
-
-const printSingle = (habitacion) => {
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
-    if (!printWindow) return;
-
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>QR Habitación ${habitacion.numero}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; }
-                    .card { border: 1px solid #e5e7eb; border-radius: 16px; padding: 24px; text-align: center; }
-                    .title { font-size: 28px; font-weight: 800; color: #2F2A26; margin-bottom: 16px; }
-                    .brand { margin-top: 12px; color: #A64B35; font-weight: 800; letter-spacing: 0.08em; }
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <div class="title">Habitación ${habitacion.numero}</div>
-                    <div>${habitacion.qr_svg}</div>
-                    <div class="brand">LANZASTAY</div>
-                </div>
-                <script>window.onload = () => { window.print(); window.close(); };<\/script>
-            </body>
-        </html>
-    `);
-    printWindow.document.close();
+    habitacionParaImprimir.value = null;
 };
 </script>
 
 <template>
-    <Head title="Códigos QR" />
+    <Head title="Generador de QRs" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex items-center justify-between no-print">
-                <h2 class="text-2xl font-black text-[#2F2A26]">Códigos QR</h2>
-                <button
-                    @click="printAll"
-                    class="inline-flex items-center gap-2 rounded-xl bg-[#A64B35] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
-                >
-                    <PrinterIcon class="h-5 w-5" />
-                    Imprimir todos los QR
-                </button>
-            </div>
-        </template>
-
-        <div class="min-h-screen bg-[#F8F7F6] py-10">
+        <div class="py-12">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 print-grid">
-                    <article
+                <h1 class="mb-6 text-3xl font-black text-[#2F2A26] print:hidden">Generador de QRs</h1>
+
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <div
                         v-for="habitacion in habitaciones"
                         :key="habitacion.id"
-                        class="qr-card rounded-2xl border border-[#2F2A26]/10 bg-white p-6 shadow-sm"
+                        :class="[
+                            'rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition',
+                            habitacionParaImprimir?.id === habitacion.id
+                                ? 'print:fixed print:inset-0 print:z-50 print:flex print:items-center print:justify-center print:bg-white print:p-10 print:border-0 print:shadow-none print:rounded-none'
+                                : 'print:hidden',
+                        ]"
                     >
-                        <h3 class="text-3xl font-black text-[#2F2A26]">Habitación {{ habitacion.numero }}</h3>
-                        <div class="mt-5 flex justify-center rounded-xl border border-[#2F2A26]/10 bg-white p-4" v-html="habitacion.qr_svg"></div>
-                        <button
-                            @click="printSingle(habitacion)"
-                            class="no-print mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2F2A26] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#A64B35]"
-                        >
-                            <PrinterIcon class="h-4 w-4" />
-                            Imprimir
-                        </button>
-                    </article>
-                </div>
+                        <div class="print:flex print:w-full print:max-w-md print:flex-col print:items-center">
+                            <h2 class="text-xl font-bold text-gray-900 print:mb-6 print:text-5xl print:font-black print:text-[#2F2A26]">
+                                Habitación {{ habitacion.numero }}
+                            </h2>
 
-                <div v-if="habitaciones.length === 0" class="py-16 text-center text-[#2F2A26]/60">
-                    No hay habitaciones disponibles para generar QR.
+                            <div class="mt-4 flex justify-center rounded-lg bg-gray-50 p-4 print:mt-0 print:bg-white print:p-0">
+                                <QrcodeVue
+                                    :value="getQrValue(habitacion)"
+                                    :size="220"
+                                    level="H"
+                                    render-as="svg"
+                                    foreground="#2F2A26"
+                                    background="#FFFFFF"
+                                />
+                            </div>
+
+                            <p class="mt-4 hidden text-center text-sm text-[#2F2A26] print:block">
+                                Escanea para ver el menu y servicios de LanzaStay
+                            </p>
+
+                            <button
+                                type="button"
+                                class="mt-4 w-full rounded-lg bg-[#2F2A26] px-4 py-2 font-semibold text-white transition hover:bg-[#A64B35] print:hidden"
+                                @click="printCard(habitacion)"
+                            >
+                                Imprimir
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
-
-<style scoped>
-@media print {
-    .no-print,
-    nav,
-    header,
-    aside {
-        display: none !important;
-    }
-
-    .print-grid {
-        display: grid !important;
-        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        gap: 12px !important;
-    }
-
-    .qr-card {
-        break-inside: avoid;
-        page-break-inside: avoid;
-        box-shadow: none !important;
-    }
-}
-</style>

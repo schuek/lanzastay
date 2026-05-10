@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
     ConciergeBell,
@@ -27,15 +27,14 @@ import {
 import LanguageSelector from '@/Components/LanguageSelector.vue';
 
 const props = defineProps({
-    services: Array,
-    myOrders: Array,
-    activities: Array,
-    myReservations: Array,
-    currentRoom: String,
-    currentRoomId: Number,
-    sessionToken: String,
-    guestEmail: String,
-    myActivityBookings: Array,
+    services: { type: Array, default: () => [] },
+    myOrders: { type: Array, default: () => [] },
+    activities: { type: Array, default: () => [] },
+    myReservations: { type: Array, default: () => [] },
+    currentRoom: { type: String, default: '' },
+    currentRoomId: { type: Number, default: undefined },
+    sessionToken: { type: String, default: '' },
+    guestEmail: { type: String, default: '' },
 });
 
 const currentTab = ref('home');
@@ -45,9 +44,8 @@ const cart = ref([]);
 const isCartOpen = ref(false);
 const requestedTime = ref('');
 const maintenanceDescription = ref('');
-const reactiveOrders = ref([...(props.myOrders ?? [])]);
 const reactiveReservations = ref([...(props.myReservations ?? [])]);
-const reactiveActivityBookings = ref([...(props.myActivityBookings ?? [])]);
+const paymentMethod = ref('room');
 const isHelpModalOpen = ref(false);
 const isChatOpen = ref(false);
 const showReservationSuccess = ref(false);
@@ -65,14 +63,8 @@ const restaurantFilter = ref('comida');
 const selectedMenuItem = ref(null);
 const isMenuItemModalOpen = ref(false);
 const excludedIngredients = ref([]);
+const page = usePage();
 
-const actividades = ref([
-    { id: 1, titulo: 'Circuito Spa & Relax', descripcion: 'Relájate en nuestro circuito de aguas termales, sauna y baño turco. Ideal para desconectar.', categoria: 'Bienestar', precio: 25, horario: '10:00 - 20:00', plazas_totales: 15, plazas_disponibles: 8, imagen: '/images/spa.avif' },
-    { id: 2, titulo: 'Yoga al Amanecer', descripcion: 'Empieza el día con energía y paz interior frente al mar. Apto para todos los niveles.', categoria: 'Deportes', precio: 0, horario: '08:00 - 09:00', plazas_totales: 20, plazas_disponibles: 12, imagen: '/images/yoga.avif' },
-    { id: 3, titulo: 'Acceso Gimnasio', descripcion: 'Mantente en forma durante tus vacaciones con nuestras máquinas de última generación.', categoria: 'Deportes', precio: 0, horario: '06:00 - 23:00', plazas_totales: 30, plazas_disponibles: 30, imagen: '/images/gym.avif' },
-    { id: 4, titulo: 'Música en Vivo: Noche Acústica', descripcion: 'Disfruta de una velada mágica con artistas locales en nuestra terraza principal.', categoria: 'Entretenimiento y Cultura', precio: 0, horario: '21:00 - 23:30', plazas_totales: 50, plazas_disponibles: 25, imagen: '/images/musica.avif' },
-    { id: 5, titulo: 'Búsqueda del Tesoro Pirata', descripcion: '¡Los más pequeños se divertirán buscando pistas por todo el hotel para encontrar el cofre oculto!', categoria: 'Actividades para niños', precio: 0, horario: '11:00 - 13:00', plazas_totales: 20, plazas_disponibles: 5, imagen: '/images/tesoro.avif' },
-]);
 const availableHours = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
 const chatbotPos = ref({ bottom: 98, right: 16 });
@@ -106,18 +98,47 @@ const categorizedFoodServices = computed(() => {
 });
 const filteredRestaurantServices = computed(() => categorizedFoodServices.value[restaurantFilter.value] ?? []);
 const busTours = computed(() => (props.activities ?? []).filter((activity) => activity.type === 'bus_tour'));
-const actividadesGenerales = computed(() => actividades.value.filter((activity) => activity.categoria !== 'Actividades para niños'));
+/** Actividades de hotel desde BD; excluye las marcadas con prefijo [niños] en descripción (misma lógica que el listado general anterior). */
+const hotelActivitiesGeneral = computed(() => (props.activities ?? []).filter(
+    (activity) => activity.type === 'hotel_activity' && !String(activity.description ?? '').startsWith('[niños]'),
+));
 const bookingTotal = computed(() => Number((selectedActivity.value?.price ?? 0) * bookingSeats.value));
-const precioTotalReserva = computed(() => Number((selectedActividadReserva.value?.precio ?? 0) * cantidadReserva.value));
+const precioTotalReserva = computed(() => Number((selectedActividadReserva.value?.price ?? 0) * cantidadReserva.value));
 
 const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value || 0);
-const formatDateTime = (value) => new Date(value).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+const formatDateTime = (value) => {
+    if (value == null || value === '') return '—';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+};
+const activityDateYmd = (activity) => {
+    if (!activity?.date_time) return undefined;
+    const d = new Date(activity.date_time);
+    if (Number.isNaN(d.getTime())) return undefined;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const buildReservationPayload = (activity, seats, type) => {
+    const date = activityDateYmd(activity);
+    return {
+        room_number: props.currentRoom,
+        session_token: props.sessionToken,
+        activity_id: activity.id,
+        guests: seats,
+        seats_booked: seats,
+        type,
+        ...(date ? { date } : {}),
+    };
+};
+
+const postReservation = (activity, seats, type) => axios.post('/api/reservations', buildReservationPayload(activity, seats, type));
 const formatReservationType = (type) => type === 'bus_tour' ? 'Bus' : 'Actividad';
 const statusLabel = (status) => ({ pendiente: 'Pendiente', confirmada: 'Confirmada', cancelada: 'Cancelada' }[status] ?? status);
 const orderStatusClass = (status) => status === 'completado' ? 'text-gray-500 bg-gray-100' : 'text-[#A64B35] bg-[#A64B35]/10';
 const orderStatusLabel = (order) => {
     const labelsByType = {
-        comida: { recibido: 'Pendiente', en_proceso: 'En cocina', en_camino: 'En camino', completado: 'Completado' },
+        comida: { recibido: 'Pendiente', en_proceso: 'En cocina', en_camino: 'En camino', completado: 'Completado', pagado: 'Pagado' },
         limpieza: { recibido: 'Pendiente', en_proceso: 'En limpieza', en_camino: 'En camino', completado: 'Completado' },
         mantenimiento: { recibido: 'Pendiente', en_proceso: 'En revisión', en_camino: 'En camino', completado: 'Completado' },
     };
@@ -184,25 +205,23 @@ const stopDragChatbot = () => {
     document.removeEventListener('touchend', stopDragChatbot);
 };
 
-const fetchMyOrders = async () => {
-    if (!props.currentRoom || !props.sessionToken) return;
-    try {
-        const response = await axios.get(route('api.orders.my'), {
-            params: { room_number: props.currentRoom, session_token: props.sessionToken },
-        });
-        const fetchedOrders = response.data?.orders ?? [];
-        const activeOrders = fetchedOrders.filter((order) => order.status !== 'completado');
-        activeOrders.forEach((order) => {
-            const previousStatus = orderStatusSnapshot.value[order.id];
-            if (previousStatus && previousStatus !== order.status) {
-                mostrarNotificacion(`Tu pedido #${order.id} cambió a ${orderStatusLabel(order)}.`);
-            }
-            orderStatusSnapshot.value[order.id] = order.status;
-        });
-        reactiveOrders.value = fetchedOrders;
-    } catch (error) {
-        console.error('No se pudieron refrescar los pedidos de la sesion.', error);
-    }
+const fetchMyOrders = () => {
+    router.reload({
+        only: ['myOrders'],
+        preserveScroll: true,
+        onSuccess: () => {
+            const current = props.myOrders ?? [];
+            current
+                .filter((order) => order.status !== 'completado')
+                .forEach((order) => {
+                    const previousStatus = orderStatusSnapshot.value[order.id];
+                    if (previousStatus && previousStatus !== order.status) {
+                        mostrarNotificacion(`Tu pedido #${order.id} cambió a ${orderStatusLabel(order)}.`);
+                    }
+                    orderStatusSnapshot.value[order.id] = order.status;
+                });
+        },
+    });
 };
 
 const orderStepIndex = (status) => {
@@ -257,6 +276,21 @@ const decreaseQty = (item) => {
 
 const submitOrder = () => {
     if (cart.value.length === 0) return;
+    if (paymentMethod.value === 'card') {
+        axios.post(route('orders.checkout', { numero: props.currentRoom }), {
+            cart: cart.value.map((item) => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price })),
+            total: totalPrice.value,
+            session_token: props.sessionToken,
+        }).then((response) => {
+            if (response.data?.url) {
+                window.location.href = response.data.url;
+                return;
+            }
+            showNotification('No se pudo iniciar el pago con tarjeta.', 'error');
+        }).catch(() => showNotification('No se pudo iniciar el pago con tarjeta.', 'error'));
+        return;
+    }
+
     axios.post('/api/orders', {
         room_number: props.currentRoom,
         habitacion_id: props.currentRoomId,
@@ -264,11 +298,11 @@ const submitOrder = () => {
         service_type: 'comida',
         total: totalPrice.value,
         cart: cart.value.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })),
-    }).then((response) => {
-        if (response.data?.order) reactiveOrders.value.unshift(response.data.order);
+    }).then(() => {
         cart.value = [];
         isCartOpen.value = false;
         showNotification('Pedido de comida enviado.', 'success');
+        fetchMyOrders();
     }).catch(() => showNotification('No se pudo enviar el pedido.', 'error'));
 };
 
@@ -312,17 +346,17 @@ const startReservation = (activity) => {
 };
 const confirmReservation = () => {
     if (!selectedActivity.value) return;
-    axios.post('/api/activity-reservations', {
-        room_number: props.currentRoom,
-        session_token: props.sessionToken,
-        activity_id: selectedActivity.value.id,
-        seats_booked: bookingSeats.value,
-    }).then((response) => {
+    postReservation(selectedActivity.value, bookingSeats.value, 'bus_tour').then((response) => {
         if (response.data?.reservation) reactiveReservations.value.unshift(response.data.reservation);
+        bookingSeats.value = 1;
+        selectedActivity.value = null;
         isBookingModalOpen.value = false;
+        showReservationSuccess.value = true;
+        setTimeout(() => { showReservationSuccess.value = false; }, 1800);
         showNotification('Reserva enviada a recepción.', 'success');
     }).catch((error) => {
-        const message = error?.response?.data?.errors?.seats_booked?.[0] ?? 'No se pudo completar la reserva.';
+        const errs = error?.response?.data?.errors ?? {};
+        const message = errs.seats_booked?.[0] ?? errs.date?.[0] ?? errs.type?.[0] ?? 'No se pudo completar la reserva.';
         showNotification(message, 'error');
     });
 };
@@ -333,28 +367,23 @@ const openReservaModal = (actividad) => {
     isReservaModalOpen.value = true;
 };
 const adjustCantidadReserva = () => {
-    const maxSeats = selectedActividadReserva.value?.plazas_disponibles ?? 1;
+    const maxSeats = selectedActividadReserva.value?.max_seats ?? 1;
     if (cantidadReserva.value < 1) cantidadReserva.value = 1;
     if (cantidadReserva.value > maxSeats) cantidadReserva.value = maxSeats;
 };
 const confirmarReservaActividad = () => {
     if (!selectedActividadReserva.value) return;
-    axios.post(route('reservas.store'), {
-        room_number: props.currentRoom,
-        session_token: props.sessionToken,
-        actividad_id: selectedActividadReserva.value.id,
-        titulo: selectedActividadReserva.value.titulo,
-        horario: selectedActividadReserva.value.horario,
-        precio: selectedActividadReserva.value.precio,
-        num_personas: cantidadReserva.value,
-        plazas_disponibles: selectedActividadReserva.value.plazas_disponibles,
-    }).then((response) => {
-        if (response.data?.reservation) reactiveActivityBookings.value.unshift(response.data.reservation);
+    postReservation(selectedActividadReserva.value, cantidadReserva.value, 'hotel_activity').then((response) => {
+        if (response.data?.reservation) reactiveReservations.value.unshift(response.data.reservation);
+        cantidadReserva.value = 1;
+        selectedActividadReserva.value = null;
         isReservaModalOpen.value = false;
         showReservationSuccess.value = true;
         setTimeout(() => { showReservationSuccess.value = false; }, 1800);
+        showNotification('Reserva confirmada.', 'success');
     }).catch((error) => {
-        const message = error?.response?.data?.errors?.num_personas?.[0] ?? 'No se pudo completar la reserva.';
+        const errs = error?.response?.data?.errors ?? {};
+        const message = errs.seats_booked?.[0] ?? errs.date?.[0] ?? errs.type?.[0] ?? 'No se pudo completar la reserva.';
         showNotification(message, 'error');
     });
 };
@@ -362,11 +391,14 @@ const confirmarReservaActividad = () => {
 onMounted(() => {
     window.history.replaceState({ tab: 'home' }, '');
     window.addEventListener('popstate', handlePopState);
+    if (page.props.flash?.success) {
+        showNotification(page.props.flash.success, 'success');
+    }
+    if (page.props.flash?.error) {
+        showNotification(page.props.flash.error, 'error');
+    }
     fetchMyOrders();
     pollingInterval = setInterval(fetchMyOrders, 12000);
-    setTimeout(() => {
-        mostrarNotificacion('Toast activo: tu pedido está en camino.');
-    }, 1200);
 });
 
 onUnmounted(() => {
@@ -407,6 +439,16 @@ onUnmounted(() => {
                     <div class="text-xs text-[#2F2A26]">
                         <LanguageSelector />
                     </div>
+                    <button
+                        v-if="cart.length > 0"
+                        @click="isCartOpen = true"
+                        class="relative inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#2F2A26]/15 text-[#2F2A26]"
+                    >
+                        <ShoppingCart class="w-4 h-4 text-[#A64B35]" />
+                        <span class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center">
+                            {{ cart.length }}
+                        </span>
+                    </button>
                     <button @click="isHelpModalOpen = true" class="inline-flex items-center gap-1.5 rounded-full border border-[#2F2A26]/15 px-3 py-1.5 text-xs font-medium text-[#2F2A26]">
                         <Phone class="w-3.5 h-3.5 text-[#A64B35]" />
                         AYUDA
@@ -523,15 +565,18 @@ onUnmounted(() => {
             </section>
 
             <section v-if="currentTab === 'activities'" class="space-y-3">
-                <article v-for="activity in actividadesGenerales" :key="activity.id" class="rounded-xl border border-[#2F2A26]/10 bg-white overflow-hidden">
-                    <img :src="activity.imagen" :alt="activity.titulo" class="h-32 w-full object-cover">
+                <div v-if="hotelActivitiesGeneral.length === 0" class="rounded-xl border border-[#2F2A26]/10 bg-white p-4 text-xs text-[#2F2A26]/70">
+                    No hay actividades del hotel disponibles en este momento.
+                </div>
+                <article v-for="activity in hotelActivitiesGeneral" :key="activity.id" class="rounded-xl border border-[#2F2A26]/10 bg-white overflow-hidden">
+                    <img :src="activity.image_url || '/images/spa.avif'" :alt="activity.name" class="h-32 w-full object-cover">
                     <div class="p-3">
-                        <p class="text-sm font-semibold text-[#2F2A26]">{{ activity.titulo }}</p>
-                        <p class="text-xs text-[#2F2A26]/65 mt-1">{{ activity.descripcion }}</p>
+                        <p class="text-sm font-semibold text-[#2F2A26]">{{ activity.name }}</p>
+                        <p class="text-xs text-[#2F2A26]/65 mt-1">{{ String(activity.description ?? '').replace(/^\[niños\]\s*/i, '') }}</p>
                         <div class="mt-2 space-y-1 text-xs text-[#2F2A26]/70">
-                            <p class="inline-flex items-center gap-1"><Clock3 class="w-3.5 h-3.5 text-[#A64B35]" /> {{ activity.horario }}</p>
-                            <p class="inline-flex items-center gap-1 ml-3"><Euro class="w-3.5 h-3.5 text-[#A64B35]" /> {{ activity.precio === 0 ? 'Gratis' : formatPrice(activity.precio) }}</p>
-                            <p class="inline-flex items-center gap-1 ml-3"><Users class="w-3.5 h-3.5 text-[#A64B35]" /> {{ activity.plazas_disponibles }} disponibles</p>
+                            <p class="inline-flex items-center gap-1"><Clock3 class="w-3.5 h-3.5 text-[#A64B35]" /> {{ formatDateTime(activity.date_time) }}</p>
+                            <p class="inline-flex items-center gap-1 ml-3"><Euro class="w-3.5 h-3.5 text-[#A64B35]" /> {{ Number(activity.price) === 0 ? 'Gratis' : formatPrice(activity.price) }}</p>
+                            <p class="inline-flex items-center gap-1 ml-3"><Users class="w-3.5 h-3.5 text-[#A64B35]" /> {{ activity.max_seats }} plazas</p>
                         </div>
                         <button @click="openReservaModal(activity)" class="mt-3 w-full rounded-lg bg-[#A64B35] text-white py-2 text-sm">
                             {{ $t('actions.book') }}
@@ -541,14 +586,17 @@ onUnmounted(() => {
             </section>
 
             <section v-if="currentTab === 'orders'" class="space-y-3">
-                <div v-if="reactiveOrders.length === 0" class="rounded-xl border border-[#2F2A26]/10 bg-white p-4 text-xs text-[#2F2A26]/70">
+                <div v-if="props.myOrders.length === 0" class="rounded-xl border border-[#2F2A26]/10 bg-white p-4 text-xs text-[#2F2A26]/70">
                     No tienes solicitudes registradas.
                 </div>
-                <article v-for="order in reactiveOrders" :key="order.id" class="rounded-xl border border-[#2F2A26]/10 bg-white p-3">
+                <article v-for="order in props.myOrders" :key="order.id" class="rounded-xl border border-[#2F2A26]/10 bg-white p-3">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="text-sm font-semibold text-[#2F2A26]">{{ orderTitle(order) }}</p>
                             <p class="text-xs text-[#2F2A26]/55">{{ formatDateTime(order.created_at) }}</p>
+                            <p class="text-[10px] text-[#2F2A26]/50 mt-1 font-mono uppercase tracking-wide">
+                                Estado: {{ order.status }}
+                            </p>
                         </div>
                         <span :class="orderStatusClass(order.status)" class="text-[10px] px-2 py-1 rounded-full font-medium">
                             {{ orderStatusLabel(order) }}
@@ -578,27 +626,18 @@ onUnmounted(() => {
                     <p class="text-sm font-semibold text-[#2F2A26] mt-1">{{ guestEmail || 'No disponible' }}</p>
                 </div>
                 <div class="space-y-2">
-                    <p class="text-sm font-semibold text-[#2F2A26]">Mis Reservas/Actividades</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="rounded-lg border border-[#2F2A26]/10 p-3 bg-white">
-                            <p class="text-[10px] text-[#2F2A26]/60">Reservas</p>
-                            <p class="text-base font-semibold text-[#2F2A26]">{{ reactiveReservations.length }}</p>
-                        </div>
-                        <div class="rounded-lg border border-[#2F2A26]/10 p-3 bg-white">
-                            <p class="text-[10px] text-[#2F2A26]/60">Actividades</p>
-                            <p class="text-base font-semibold text-[#2F2A26]">{{ reactiveActivityBookings.length }}</p>
-                        </div>
+                    <p class="text-sm font-semibold text-[#2F2A26]">Mis reservas de actividades</p>
+                    <div class="rounded-lg border border-[#2F2A26]/10 p-3 bg-white">
+                        <p class="text-[10px] text-[#2F2A26]/60">Total</p>
+                        <p class="text-base font-semibold text-[#2F2A26]">{{ reactiveReservations.length }}</p>
                     </div>
                     <article v-for="reservation in reactiveReservations" :key="reservation.id" class="rounded-xl border border-[#2F2A26]/10 bg-white p-3">
                         <div class="flex justify-between items-center">
                             <p class="text-sm font-semibold text-[#2F2A26]">{{ reservation.activity?.name }}</p>
                             <span class="text-[10px] px-2 py-1 rounded-full bg-[#A64B35]/10 text-[#A64B35]">{{ statusLabel(reservation.status) }}</span>
                         </div>
-                        <p class="text-xs text-[#2F2A26]/65 mt-1">{{ formatReservationType(reservation.activity?.type) }} - {{ formatDateTime(reservation.activity?.date_time) }}</p>
-                    </article>
-                    <article v-for="booking in reactiveActivityBookings.slice(0, 3)" :key="booking.id" class="rounded-xl border border-[#2F2A26]/10 bg-white p-3">
-                        <p class="text-sm font-semibold text-[#2F2A26]">{{ booking.titulo_actividad ?? 'Actividad' }}</p>
-                        <p class="text-xs text-[#2F2A26]/65 mt-1">Personas: {{ booking.num_personas }} · {{ formatPrice(booking.precio_total) }}</p>
+                        <p class="text-xs text-[#2F2A26]/65 mt-1">{{ formatReservationType(reservation.activity?.type) }} · {{ formatDateTime(reservation.activity?.date_time) }}</p>
+                        <p class="text-xs text-[#2F2A26]/55 mt-0.5">Plazas: {{ reservation.seats_booked }} · {{ formatPrice(reservation.total_price) }}</p>
                     </article>
                 </div>
             </section>
@@ -666,10 +705,6 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <button v-if="cart.length > 0" @click="isCartOpen = !isCartOpen" class="fixed right-4 bottom-24 z-50 w-11 h-11 rounded-full bg-[#A64B35] text-white flex items-center justify-center shadow-lg">
-            <ShoppingCart class="w-5 h-5" />
-        </button>
-
         <div v-if="isCartOpen" class="fixed inset-0 z-[85] flex justify-end">
             <div class="absolute inset-0 bg-black/40" @click="isCartOpen = false"></div>
             <div class="relative w-full max-w-md bg-white h-full shadow-xl p-4 flex flex-col">
@@ -695,6 +730,11 @@ onUnmounted(() => {
                         <span>Total</span>
                         <span class="text-[#A64B35] font-semibold">{{ formatPrice(totalPrice) }}</span>
                     </div>
+                    <label class="block text-xs text-[#2F2A26]/70 mb-1">¿Cómo deseas pagar?</label>
+                    <select v-model="paymentMethod" class="w-full mb-3 rounded-lg border-[#2F2A26]/20 text-sm">
+                        <option value="room">Cargar a la habitación</option>
+                        <option value="card">Pagar ahora con tarjeta</option>
+                    </select>
                     <button @click="submitOrder" class="w-full rounded-lg bg-[#A64B35] text-white py-2.5 text-sm">Confirmar pedido</button>
                 </div>
             </div>
@@ -733,11 +773,11 @@ onUnmounted(() => {
         <div v-if="isReservaModalOpen && selectedActividadReserva" class="fixed inset-0 z-[90] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/40" @click="isReservaModalOpen = false"></div>
             <div class="relative bg-white rounded-xl border border-[#2F2A26]/10 shadow-xl p-4 w-full max-w-sm">
-                <p class="text-sm font-semibold text-[#2F2A26]">{{ selectedActividadReserva.titulo }}</p>
-                <p class="text-xs text-[#2F2A26]/65 mt-1">{{ selectedActividadReserva.horario }}</p>
+                <p class="text-sm font-semibold text-[#2F2A26]">{{ selectedActividadReserva.name }}</p>
+                <p class="text-xs text-[#2F2A26]/65 mt-1">{{ formatDateTime(selectedActividadReserva.date_time) }}</p>
                 <label class="block text-xs text-[#2F2A26]/65 mt-3">¿Cuántos son?</label>
-                <input v-model.number="cantidadReserva" @input="adjustCantidadReserva" type="number" min="1" :max="selectedActividadReserva.plazas_disponibles" class="w-full rounded-lg border-[#2F2A26]/20 mt-1 text-sm">
-                <p class="text-xs text-[#A64B35] mt-2">Precio total: {{ selectedActividadReserva.precio === 0 ? 'Gratis' : formatPrice(precioTotalReserva) }}</p>
+                <input v-model.number="cantidadReserva" @input="adjustCantidadReserva" type="number" min="1" :max="selectedActividadReserva.max_seats" class="w-full rounded-lg border-[#2F2A26]/20 mt-1 text-sm">
+                <p class="text-xs text-[#A64B35] mt-2">Precio total: {{ Number(selectedActividadReserva.price) === 0 ? 'Gratis' : formatPrice(precioTotalReserva) }}</p>
                 <button @click="confirmarReservaActividad" class="w-full mt-3 rounded-lg bg-[#A64B35] text-white py-2 text-sm">
                     {{ $t('actions.confirm') }}
                 </button>

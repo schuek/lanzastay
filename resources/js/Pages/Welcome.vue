@@ -9,6 +9,9 @@ defineProps({
         type: Boolean,
     },
 });
+
+const urlParams = new URLSearchParams(window.location.search);
+const roomNumber = urlParams.get('room');
 </script>
 
 <template>
@@ -42,6 +45,14 @@ defineProps({
                 <div class="absolute inset-0 bg-black bg-opacity-40"></div>
 
                 <div class="relative z-10 max-w-3xl text-white mt-[-10vh] animate-in fade-in zoom-in duration-700">
+                    <div
+                        v-if="roomNumber"
+                        class="mb-6 rounded-2xl border border-[#A64B35]/30 bg-white/95 px-6 py-4 text-[#2F2A26] shadow-xl backdrop-blur-sm"
+                    >
+                        <p class="text-sm font-semibold uppercase tracking-wide text-[#A64B35]">LanzaStay</p>
+                        <p class="mt-1 text-2xl font-black md:text-3xl">¡Bienvenido! Estás en la Habitación {{ roomNumber }}</p>
+                    </div>
+
                     <h1 class="text-5xl md:text-7xl font-black mb-6 drop-shadow-lg tracking-tight">Tu descanso en el paraíso.</h1>
                     <p class="text-xl md:text-2xl mb-10 text-gray-100 drop-shadow-md font-light">
                         La experiencia más moderna de la isla. Relájate, pide desde tu cama y disfruta de las vistas.

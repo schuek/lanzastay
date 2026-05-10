@@ -1,13 +1,25 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { QrCodeIcon } from '@heroicons/vue/24/outline';
 
 const showingNavigationDropdown = ref(false);
+
+const page = usePage();
+const role = computed(() => page.props.auth?.user?.role ?? '');
+/** Cocina / room service: solo pedidos */
+const canKitchen = computed(() => ['admin', 'cocina', 'room_service'].includes(role.value));
+/** Recepción, limpieza, mantenimiento: habitaciones y QR */
+const canReceptionDesk = computed(() => ['admin', 'recepcion', 'limpieza', 'mantenimiento'].includes(role.value));
+/** Actividades: admin y recepción */
+const canActivities = computed(() => ['admin', 'recepcion'].includes(role.value));
+/** Catálogo de servicios: solo administrador */
+const canCatalog = computed(() => role.value === 'admin');
+const canQr = computed(() => ['admin', 'recepcion'].includes(role.value));
 </script>
 
 <template>
@@ -37,25 +49,45 @@ const showingNavigationDropdown = ref(false);
                                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
                                     Panel Principal
                                 </NavLink>
-                                <NavLink :href="route('admin.qrcodes')" :active="route().current('admin.qrcodes')">
+                                <NavLink
+                                    v-if="canQr"
+                                    :href="route('admin.qrcodes')"
+                                    :active="route().current('admin.qrcodes')"
+                                >
                                     <span class="inline-flex items-center gap-2">
                                         <QrCodeIcon class="h-4 w-4" />
                                         Códigos QR
                                     </span>
                                 </NavLink>
 
-                                <NavLink :href="route('orders.index')" :active="route().current('orders.index')">
+                                <NavLink
+                                    v-if="canKitchen"
+                                    :href="route('admin.orders')"
+                                    :active="route().current('admin.orders')"
+                                >
                                     Pedidos Actuales
                                 </NavLink>
 
-                                <NavLink :href="route('rooms.index')" :active="route().current('rooms.index') || route().current('admin.qrcodes')">
+                                <NavLink
+                                    v-if="canReceptionDesk"
+                                    :href="route('rooms.index')"
+                                    :active="route().current('rooms.index')"
+                                >
                                     Habitaciones
                                 </NavLink>
 
-                                <NavLink :href="route('admin.index')" :active="route().current('admin.index') || route().current('services.create') || route().current('services.edit')">
+                                <NavLink
+                                    v-if="canCatalog"
+                                    :href="route('admin.index')"
+                                    :active="route().current('admin.index') || route().current('services.create') || route().current('services.edit')"
+                                >
                                     Gestión de Catálogo
                                 </NavLink>
-                                <NavLink :href="route('activities.index')" :active="route().current('activities.index') || route().current('activity-reservations.index')">
+                                <NavLink
+                                    v-if="canActivities"
+                                    :href="route('activities.index')"
+                                    :active="route().current('activities.index') || route().current('activity-reservations.index')"
+                                >
                                     Actividades y Reservas
                                 </NavLink>
                             </div>
@@ -165,19 +197,39 @@ const showingNavigationDropdown = ref(false);
                         >
                             Panel Principal
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.qrcodes')" :active="route().current('admin.qrcodes')">
+                        <ResponsiveNavLink
+                            v-if="canQr"
+                            :href="route('admin.qrcodes')"
+                            :active="route().current('admin.qrcodes')"
+                        >
                             Códigos QR
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('orders.index')" :active="route().current('orders.index')">
+                        <ResponsiveNavLink
+                            v-if="canKitchen"
+                            :href="route('admin.orders')"
+                            :active="route().current('admin.orders')"
+                        >
                             Pedidos Actuales
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('rooms.index')" :active="route().current('rooms.index') || route().current('admin.qrcodes')">
+                        <ResponsiveNavLink
+                            v-if="canReceptionDesk"
+                            :href="route('rooms.index')"
+                            :active="route().current('rooms.index')"
+                        >
                             Habitaciones
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.index')" :active="route().current('admin.index')">
+                        <ResponsiveNavLink
+                            v-if="canCatalog"
+                            :href="route('admin.index')"
+                            :active="route().current('admin.index')"
+                        >
                             Gestión de Catálogo
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('activities.index')" :active="route().current('activities.index') || route().current('activity-reservations.index')">
+                        <ResponsiveNavLink
+                            v-if="canActivities"
+                            :href="route('activities.index')"
+                            :active="route().current('activities.index') || route().current('activity-reservations.index')"
+                        >
                             Actividades y Reservas
                         </ResponsiveNavLink>
                     </div>
