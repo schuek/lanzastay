@@ -81,6 +81,30 @@ const toDateTimeInput = (value) => {
     const pad = (n) => String(n).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
+
+const reservationStatusLabel = (status) => {
+    const labels = {
+        pendiente: 'Pendiente',
+        confirmada: 'Confirmada',
+        aceptada: 'Aceptada',
+        cancelada: 'Cancelada',
+    };
+    return labels[String(status ?? '').toLowerCase()] ?? status;
+};
+
+const reservationStatusBadgeClass = (status) => {
+    const key = String(status ?? '').toLowerCase();
+    if (key === 'confirmada' || key === 'aceptada') {
+        return 'bg-green-100 text-green-800';
+    }
+    if (key === 'cancelada') {
+        return 'bg-red-100 text-red-800';
+    }
+    if (key === 'pendiente') {
+        return 'bg-yellow-100 text-yellow-800';
+    }
+    return 'bg-slate-100 text-slate-700';
+};
 </script>
 
 <template>
@@ -205,7 +229,12 @@ const toDateTimeInput = (value) => {
                                 <td class="px-4 py-3 text-sm text-[#2F2A26]/70">{{ reservation.seats_booked }}</td>
                                 <td class="px-4 py-3 text-sm font-bold text-[#A64B35]">{{ formatPrice(reservation.total_price) }}</td>
                                 <td class="px-4 py-3">
-                                    <span class="text-xs px-2 py-1 rounded-full bg-[#A64B35]/10 text-[#A64B35] font-bold uppercase">{{ reservation.status }}</span>
+                                    <span
+                                        class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+                                        :class="reservationStatusBadgeClass(reservation.status)"
+                                    >
+                                        {{ reservationStatusLabel(reservation.status) }}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="flex justify-end gap-2">

@@ -11,7 +11,17 @@ defineProps({
     },
 });
 
-const getQrValue = (habitacion) => `${window.location.origin}/menu/${habitacion.numero}`;
+const getQrValue = (habitacion) => {
+    if (habitacion?.menu_url) {
+        return habitacion.menu_url.startsWith('http')
+            ? habitacion.menu_url
+            : `${window.location.origin}${habitacion.menu_url}`;
+    }
+    if (habitacion?.access_token) {
+        return route('menu.show', { habitacion: habitacion.access_token });
+    }
+    return '';
+};
 
 const habitacionParaImprimir = ref(null);
 

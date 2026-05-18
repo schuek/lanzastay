@@ -59,6 +59,15 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        User::updateOrCreate(
+            ['email' => 'mantenimiento@lanzastay.com'],
+            [
+                'name' => 'Mantenimiento',
+                'role' => 'mantenimiento',
+                'password' => Hash::make('password'),
+            ]
+        );
+
         // --- 1. CREAMOS LAS TRES GRANDES ÁREAS ---
         $restaurante = Category::create(['name' => 'Restaurante', 'icon' => 'CakeIcon']);
         $limpieza = Category::create(['name' => 'Limpieza', 'icon' => 'SparklesIcon']);
@@ -72,6 +81,7 @@ class DatabaseSeeder extends Seeder
             'price' => 12.50,
             'service_type' => 'comida',
             'service_category' => 'Comida',
+            'categoria_restaurante' => 'Comida',
             'ingredients' => ['Pan brioche', 'Carne', 'Queso', 'Bacon', 'Lechuga', 'Tomate'],
             'is_vegan' => false,
         ]);
@@ -82,6 +92,7 @@ class DatabaseSeeder extends Seeder
             'price' => 7.50,
             'service_type' => 'comida',
             'service_category' => 'Bebida',
+            'categoria_restaurante' => 'Bebida',
             'ingredients' => ['Ron', 'Lima', 'Hierbabuena', 'Azúcar', 'Soda'],
             'is_vegan' => true,
         ]);
@@ -92,6 +103,7 @@ class DatabaseSeeder extends Seeder
             'price' => 5.50,
             'service_type' => 'comida',
             'service_category' => 'Postre',
+            'categoria_restaurante' => 'Postre',
             'ingredients' => ['Queso crema', 'Galleta', 'Mantequilla', 'Frutos rojos'],
             'is_vegan' => false,
         ]);

@@ -9,42 +9,50 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use App\Events\OrderCreated;
+use App\Support\AmenityRequestType;
+use App\Support\CleaningRequestType;
+use App\Support\GuestRoomResolver;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Inertia\Inertia;
-use Stripe\Checkout\Session as StripeCheckoutSession;
+use Stripe\Charge;
+use Stripe\Exception\CardException as StripeCardException;
 use Stripe\Stripe;
 
 class OrderController extends Controller
 {
     public function store(Request $request)
     {
-        $order = Order::query()->create([
-            'room_number' => $request->input('room_number'),
-            'service_type' => $request->input('service_type', 'comida'),
-            'total_price' => $request->input('total', 0),
-            'status' => 'recibido',
-        ]);
+        try {
+            $validated = $request->validate(array_merge($this->storeRules(), [
+                'notas' => 'nullable|string|max:2000',
+                'stripe_token' => 'nullable|string',
+            ]));
 
-        if ($request->has('cart')) {
-            foreach ((array) $request->input('cart', []) as $item) {
-                if (!isset($item['id'])) {
-                    continue;
-                }
+            $paidWithCard = ! empty($validated['stripe_token']);
 
-                $order->services()->attach($item['id'], [
-                    'quantity' => $item['quantity'] ?? 1,
-                    'price' => $item['price'] ?? 0,
-                ]);
+            $order = $this->createOrderFromValidatedData($validated);
+            $order->load(['services', 'habitacion']);
+
+            if ($order->service_type === 'comida') {
+                broadcast(new OrderCreated($order));
             }
+
+            if ($paidWithCard) {
+                return response()->json([
+                    'message' => 'Pago completado y pedido en cocina',
+                ], 200);
+            }
+
+            return response()->json([
+                'message' => 'Pedido creado con éxito',
+                'order' => $order,
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => collect($e->errors())->flatten()->first() ?? 'No se pudo validar el pedido.',
+                'errors' => $e->errors(),
+            ], 422);
         }
-
-        $order->load(['services', 'habitacion']);
-
-        broadcast(new OrderCreated($order));
-
-        return response()->json([
-            'order' => $order,
-            'success' => true,
-        ]);
     }
 
     public function statusApi(Order $order)
@@ -57,27 +65,17 @@ class OrderController extends Controller
     public function myOrders(Request $request)
     {
         $validated = $request->validate([
-            'room_number' => 'required|string|exists:habitacions,numero',
+            'access_token' => 'required|uuid|exists:habitacions,access_token',
             'session_token' => 'required|string',
         ]);
 
-        $habitacion = Habitacion::query()
-            ->where('numero', $validated['room_number'])
-            ->firstOrFail();
-
-        if ($habitacion->status !== 'ocupada' || $habitacion->current_session_token !== $validated['session_token']) {
-            throw ValidationException::withMessages([
-                'session_token' => 'Sesion invalida. Escanea de nuevo el QR de tu habitacion.',
-            ]);
-        }
+        $habitacion = GuestRoomResolver::fromAccessToken(
+            $validated['access_token'],
+            $validated['session_token'],
+        );
 
         return response()->json([
-            'orders' => Order::query()
-                ->with(['services', 'habitacion'])
-                ->where('habitacion_id', $habitacion->id)
-                ->where('session_token', $validated['session_token'])
-                ->latest()
-                ->get(),
+            'orders' => $habitacion->ordersForCurrentStay(),
         ]);
     }
 
@@ -88,122 +86,10 @@ class OrderController extends Controller
         ]);
     }
 
-    public function checkout(Request $request, string $numero)
-    {
-        $validated = $request->validate([
-            'cart' => 'required|array|min:1',
-            'cart.*.id' => 'required|integer',
-            'cart.*.name' => 'required|string',
-            'cart.*.price' => 'required|numeric|min:0',
-            'cart.*.quantity' => 'required|integer|min:1',
-            'total' => 'required|numeric|min:0',
-            'session_token' => 'nullable|string',
-        ]);
-
-        $habitacion = Habitacion::query()->where('numero', $numero)->firstOrFail();
-        if ($habitacion->status !== 'ocupada') {
-            throw ValidationException::withMessages([
-                'room_number' => 'La habitacion no esta activa para pagos.',
-            ]);
-        }
-
-        Stripe::setApiKey(config('services.stripe.secret'));
-
-        $lineItems = collect($validated['cart'])->map(function (array $item): array {
-            return [
-                'price_data' => [
-                    'currency' => 'eur',
-                    'product_data' => [
-                        'name' => $item['name'],
-                    ],
-                    'unit_amount' => (int) round(((float) $item['price']) * 100),
-                ],
-                'quantity' => (int) $item['quantity'],
-            ];
-        })->values()->all();
-
-        $session = StripeCheckoutSession::create([
-            'mode' => 'payment',
-            'line_items' => $lineItems,
-            'success_url' => route('orders.checkout.success', ['numero' => $numero]).'?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url' => route('orders.checkout.cancel', ['numero' => $numero]),
-            'metadata' => [
-                'room_number' => $numero,
-            ],
-        ]);
-
-        session()->put('stripe_checkout_'.$session->id, [
-            'room_number' => $numero,
-            'habitacion_id' => $habitacion->id,
-            'session_token' => $validated['session_token'] ?? $habitacion->current_session_token,
-            'guest_email' => $habitacion->guest_email,
-            'cart' => $validated['cart'],
-            'total' => $validated['total'],
-        ]);
-
-        return response()->json(['url' => $session->url]);
-    }
-
-    public function checkoutSuccess(Request $request, string $numero)
-    {
-        $checkoutSessionId = (string) $request->query('session_id', '');
-        if ($checkoutSessionId === '') {
-            return redirect()->route('menu.show', ['numero' => $numero])->with('error', 'No se pudo verificar el pago.');
-        }
-
-        $payloadKey = 'stripe_checkout_'.$checkoutSessionId;
-        $payload = session($payloadKey);
-        if (! is_array($payload)) {
-            return redirect()->route('menu.show', ['numero' => $numero])->with('error', 'No se encontró la sesión de pago.');
-        }
-
-        try {
-            Stripe::setApiKey(config('services.stripe.secret'));
-            $stripeSession = StripeCheckoutSession::retrieve($checkoutSessionId);
-        } catch (\Throwable $e) {
-            Log::warning('Stripe session retrieve failed', ['session_id' => $checkoutSessionId, 'error' => $e->getMessage()]);
-            return redirect()->route('menu.show', ['numero' => $numero])->with('error', 'No se pudo validar el pago.');
-        }
-
-        if (($stripeSession->payment_status ?? null) !== 'paid') {
-            return redirect()->route('menu.show', ['numero' => $numero])->with('error', 'El pago no se completó.');
-        }
-
-        $order = Order::query()->create([
-            'habitacion_id' => $payload['habitacion_id'] ?? null,
-            'room_number' => $payload['room_number'] ?? $numero,
-            'session_token' => $payload['session_token'] ?? null,
-            'guest_email' => $payload['guest_email'] ?? null,
-            'service_type' => 'comida',
-            'total_price' => $payload['total'] ?? 0,
-            'status' => 'pagado',
-        ]);
-
-        foreach (($payload['cart'] ?? []) as $item) {
-            if (! isset($item['id'])) {
-                continue;
-            }
-            $order->services()->attach($item['id'], [
-                'quantity' => $item['quantity'] ?? 1,
-                'price' => $item['price'] ?? 0,
-            ]);
-        }
-
-        session()->forget($payloadKey);
-
-        return redirect()->route('menu.show', ['numero' => $numero])->with('success', 'Pago realizado correctamente. Pedido registrado.');
-    }
-
-    public function checkoutCancel(string $numero)
-    {
-        return redirect()->route('menu.show', ['numero' => $numero])->with('error', 'Pago cancelado. No se realizó ningún cargo.');
-    }
-
     private function storeRules(): array
     {
         return [
-            'room_number' => 'required|string|exists:habitacions,numero',
-            'habitacion_id' => 'nullable|integer|exists:habitacions,id',
+            'access_token' => 'required|uuid|exists:habitacions,access_token',
             'service_type' => 'required|in:comida,limpieza,mantenimiento',
             'session_token' => 'required|string',
             'cart' => 'nullable|array|min:1',
@@ -213,21 +99,87 @@ class OrderController extends Controller
             'total' => 'required_if:service_type,comida|numeric|min:0',
             'requested_time' => 'nullable|date_format:H:i',
             'description' => 'nullable|string|max:2000',
+            'notas' => 'nullable|string|max:2000',
+            'stripe_token' => 'nullable|string',
         ];
+    }
+
+    private function chargeWithStripeToken(string $tokenId, float $amountEur, string $description): void
+    {
+        if ($amountEur <= 0) {
+            throw ValidationException::withMessages([
+                'total' => 'El importe del pedido no es válido.',
+            ]);
+        }
+
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        try {
+            Charge::create([
+                'amount' => (int) round($amountEur * 100),
+                'currency' => 'eur',
+                'source' => $tokenId,
+                'description' => $description,
+            ]);
+        } catch (StripeCardException $e) {
+            throw ValidationException::withMessages([
+                'stripe_token' => $e->getError()->message ?? 'No se pudo procesar el pago con tarjeta.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Stripe charge failed', ['error' => $e->getMessage()]);
+            throw ValidationException::withMessages([
+                'stripe_token' => 'No se pudo procesar el pago. Inténtalo de nuevo.',
+            ]);
+        }
     }
 
     private function createOrderFromValidatedData(array $validated): Order
     {
-        if ($validated['service_type'] === 'comida' && empty($validated['cart'])) {
-            throw ValidationException::withMessages([
-                'cart' => 'Debes añadir al menos un producto para pedir comida.',
-            ]);
+        $description = $validated['description'] ?? null;
+
+        if ($validated['service_type'] === 'comida') {
+            $isRestaurantAmenity = AmenityRequestType::isRestaurantAmenity($description);
+
+            if (AmenityRequestType::isHousekeepingAmenity($description)) {
+                throw ValidationException::withMessages([
+                    'description' => 'Las peticiones de limpieza deben enviarse como servicio de housekeeping.',
+                ]);
+            }
+
+            if (! $isRestaurantAmenity && empty($validated['cart'])) {
+                throw ValidationException::withMessages([
+                    'cart' => 'Debes añadir al menos un producto para pedir comida.',
+                ]);
+            }
+
+            if ($isRestaurantAmenity && ! in_array($description, AmenityRequestType::restaurantCodes(), true)) {
+                throw ValidationException::withMessages([
+                    'description' => 'Tipo de amenity no válido.',
+                ]);
+            }
         }
 
-        if ($validated['service_type'] === 'limpieza' && empty($validated['requested_time'])) {
-            throw ValidationException::withMessages([
-                'requested_time' => 'Debes seleccionar una hora para limpieza.',
-            ]);
+        if ($validated['service_type'] === 'limpieza') {
+            if (AmenityRequestType::isRestaurantAmenity($description)) {
+                throw ValidationException::withMessages([
+                    'description' => 'Agua y bocadillo se envían a cocina, no a limpieza.',
+                ]);
+            }
+
+            if ($description !== null && $description !== '' && ! CleaningRequestType::isAllowed($description)) {
+                throw ValidationException::withMessages([
+                    'description' => 'Tipo de solicitud de limpieza no válido.',
+                ]);
+            }
+
+            $isHousekeepingAmenity = CleaningRequestType::isAmenity($description)
+                || AmenityRequestType::isHousekeepingAmenity($description);
+
+            if (! $isHousekeepingAmenity && empty($validated['requested_time'])) {
+                throw ValidationException::withMessages([
+                    'requested_time' => 'Debes seleccionar una hora para la limpieza de habitación.',
+                ]);
+            }
         }
 
         if ($validated['service_type'] === 'mantenimiento' && empty($validated['description'])) {
@@ -237,20 +189,36 @@ class OrderController extends Controller
         }
 
         return DB::transaction(function () use ($validated) {
-            $habitacion = !empty($validated['habitacion_id'])
-                ? Habitacion::query()->findOrFail($validated['habitacion_id'])
-                : Habitacion::query()->where('numero', $validated['room_number'])->firstOrFail();
+            $habitacion = GuestRoomResolver::fromAccessToken(
+                $validated['access_token'],
+                $validated['session_token'],
+            );
 
-            if ($habitacion->status !== 'ocupada') {
-                throw ValidationException::withMessages([
-                    'room_number' => 'La habitacion no esta activa para solicitudes. Realiza check-in en recepcion.',
-                ]);
+            $isRestaurantAmenity = $validated['service_type'] === 'comida'
+                && AmenityRequestType::isRestaurantAmenity($description);
+
+            $orderTotal = $validated['service_type'] === 'comida' && ! $isRestaurantAmenity
+                ? (float) ($validated['total'] ?? 0)
+                : 0.0;
+            $paidWithCard = ! empty($validated['stripe_token']);
+
+            if ($paidWithCard) {
+                $this->chargeWithStripeToken(
+                    $validated['stripe_token'],
+                    $orderTotal,
+                    'LANZASTAY pedido comida habitación '.$habitacion->numero
+                );
             }
 
-            if (($validated['session_token'] ?? null) !== $habitacion->current_session_token) {
-                throw ValidationException::withMessages([
-                    'session_token' => 'Sesion invalida. Escanea de nuevo el QR de tu habitacion.',
-                ]);
+            $cleaningDescription = null;
+            $cleaningRequestedTime = null;
+
+            if ($validated['service_type'] === 'limpieza') {
+                $cleaningDescription = $description ?? CleaningRequestType::ROOM_CLEANING;
+                $cleaningRequestedTime = CleaningRequestType::isAmenity($cleaningDescription)
+                    || AmenityRequestType::isHousekeepingAmenity($cleaningDescription)
+                    ? null
+                    : ($validated['requested_time'] ?? null);
             }
 
             $order = Order::query()->create([
@@ -259,10 +227,16 @@ class OrderController extends Controller
                 'session_token' => $habitacion->current_session_token,
                 'guest_email' => $habitacion->guest_email,
                 'service_type' => $validated['service_type'],
-                'requested_time' => $validated['service_type'] === 'limpieza' ? $validated['requested_time'] : null,
-                'description' => $validated['service_type'] === 'mantenimiento' ? $validated['description'] : null,
-                'total_price' => $validated['service_type'] === 'comida' ? ($validated['total'] ?? 0) : 0,
-                'status' => 'recibido',
+                'requested_time' => $cleaningRequestedTime,
+                'description' => match ($validated['service_type']) {
+                    'mantenimiento' => $description,
+                    'limpieza' => $cleaningDescription,
+                    'comida' => $isRestaurantAmenity ? $description : null,
+                    default => null,
+                },
+                'notas' => $validated['service_type'] === 'comida' ? ($validated['notas'] ?? null) : null,
+                'total_price' => $orderTotal,
+                'status' => $paidWithCard ? 'pagado' : 'recibido',
             ]);
 
             if ($validated['service_type'] === 'comida') {
@@ -288,25 +262,73 @@ class OrderController extends Controller
         ]);
     }
 
-    public function poll()
+    public function poll(Request $request)
     {
-        $orders = \App\Models\Order::with(['services', 'habitacion'])->latest()->get();
+        $validated = $request->validate([
+            'service_type' => 'nullable|in:comida,limpieza,mantenimiento',
+        ]);
+
+        $serviceType = $validated['service_type'] ?? null;
+
+        $this->authorize('poll', [Order::class, $serviceType]);
+
+        $query = Order::with(['services', 'habitacion'])->latest();
+
+        if ($serviceType === 'limpieza') {
+            $query->cleaningBoard();
+        } elseif ($serviceType !== null) {
+            $query->where('service_type', $serviceType);
+        }
 
         return response()->json([
-            'orders' => $orders,
+            'orders' => $query->take(100)->get(),
         ]);
     }
 
-    // CAMBIAR ESTADO (SERVIR / PENDIENTE)
-    public function update(\App\Models\Order $order, Request $request)
+    public function update(Order $order, Request $request)
     {
+        $this->authorize('update', $order);
+
         $validated = $request->validate([
-            'status' => 'required|in:recibido,en_proceso,en_camino,completado',
+            'status' => 'sometimes|required|in:recibido,en_proceso,en_camino,completado,pagado',
+            'requested_time' => 'nullable|date_format:H:i',
         ]);
 
-        $order->update(['status' => $validated['status']]);
+        $payload = [];
+
+        if (array_key_exists('status', $validated)) {
+            $payload['status'] = $validated['status'];
+        }
+
+        if (array_key_exists('requested_time', $validated)) {
+            $payload['requested_time'] = $validated['requested_time'];
+        }
+
+        if ($payload !== []) {
+            $order->update($payload);
+        }
 
         return redirect()->back();
+    }
+
+    /**
+     * PDF de un pedido finalizado (KDS / cocina).
+     */
+    public function orderKdsPdf(Order $order)
+    {
+        $this->authorize('downloadKitchenInvoice', $order);
+
+        if (! in_array($order->status, ['completado', 'entregado'], true)) {
+            abort(403);
+        }
+
+        $order->load('services');
+
+        return Pdf::loadView('pdf.order-kds', [
+            'order' => $order,
+            'generatedAt' => now(),
+        ])->setPaper('a4', 'portrait')
+            ->download('Factura-pedido-'.$order->id.'.pdf');
     }
 
 }

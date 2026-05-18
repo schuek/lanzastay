@@ -24,7 +24,7 @@ class OrderCreated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('kitchen'),
+            new Channel('restaurante-orders'),
         ];
     }
 

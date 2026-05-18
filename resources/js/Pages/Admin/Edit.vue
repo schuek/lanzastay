@@ -22,7 +22,7 @@ const form = useForm({
 
 // Enviamos los datos con método PUT (Actualizar)
 const submit = () => {
-    form.put(route('services.update', props.service.id));
+    form.put(route('catalog.update', props.service.id));
 };
 </script>
 
@@ -101,6 +101,7 @@ const submit = () => {
                                     <option value="Comida">Comida</option>
                                     <option value="Bebida">Bebida</option>
                                     <option value="Postre">Postre</option>
+                                    <option value="Entrante">Entrante</option>
                                 </select>
                             </div>
                             <div>
@@ -139,7 +140,7 @@ const submit = () => {
                         </div>
 
                         <div class="flex items-center justify-end gap-4 pt-4 border-t">
-                            <Link :href="route('admin.index')" class="text-gray-600 hover:text-gray-900 font-medium">
+                            <Link :href="route('catalog.index')" class="text-gray-600 hover:text-gray-900 font-medium">
                                 Cancelar
                             </Link>
 

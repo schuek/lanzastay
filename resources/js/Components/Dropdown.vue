@@ -16,6 +16,8 @@ const props = defineProps({
     },
 });
 
+const open = ref(false);
+
 const closeOnEscape = (e) => {
     if (open.value && e.key === 'Escape') {
         open.value = false;
@@ -26,36 +28,36 @@ onMounted(() => document.addEventListener('keydown', closeOnEscape));
 onUnmounted(() => document.removeEventListener('keydown', closeOnEscape));
 
 const widthClass = computed(() => {
-    return {
+    const map = {
         48: 'w-48',
-    }[props.width.toString()];
+        56: 'w-56',
+    };
+    return map[props.width.toString()] ?? 'w-48';
 });
 
 const alignmentClasses = computed(() => {
     if (props.align === 'left') {
         return 'ltr:origin-top-left rtl:origin-top-right start-0';
-    } else if (props.align === 'right') {
-        return 'ltr:origin-top-right rtl:origin-top-left end-0';
-    } else {
-        return 'origin-top';
     }
+    if (props.align === 'right') {
+        return 'ltr:origin-top-right rtl:origin-top-left end-0';
+    }
+    return 'origin-top';
 });
-
-const open = ref(false);
 </script>
 
 <template>
     <div class="relative">
-        <div @click="open = !open">
+        <div @click.stop="open = !open">
             <slot name="trigger" />
         </div>
 
-        <!-- Full Screen Dropdown Overlay -->
         <div
             v-show="open"
             class="fixed inset-0 z-40"
+            aria-hidden="true"
             @click="open = false"
-        ></div>
+        />
 
         <Transition
             enter-active-class="transition ease-out duration-200"
@@ -67,15 +69,11 @@ const open = ref(false);
         >
             <div
                 v-show="open"
-                class="absolute z-50 mt-2 rounded-md shadow-lg"
+                class="absolute z-50 mt-2 rounded-lg shadow-lg ring-1 ring-black/5"
                 :class="[widthClass, alignmentClasses]"
-                style="display: none"
-                @click="open = false"
+                @click.stop
             >
-                <div
-                    class="rounded-md ring-1 ring-black ring-opacity-5"
-                    :class="contentClasses"
-                >
+                <div :class="contentClasses" @click="open = false">
                     <slot name="content" />
                 </div>
             </div>

@@ -17,50 +17,52 @@ const roomNumber = urlParams.get('room');
 <template>
     <Head title="Bienvenidos" />
 
-    <div class="min-h-screen flex flex-col">
-        <header class="w-full p-6 flex justify-between items-center bg-white shadow-sm z-10 relative">
-            <div class="font-black text-2xl text-indigo-600 tracking-tighter">LANZASTAY</div>
+    <div class="relative flex h-screen w-screen flex-col bg-cover bg-center bg-no-repeat bg-[url('/images/welcome.avif')]">
+        <div
+            class="absolute inset-0 bg-black/50"
+            aria-hidden="true"
+        />
 
-            <nav v-if="canLogin" class="flex gap-4">
-                <Link
-                    v-if="$page.props.auth.user"
-                    :href="route('dashboard')"
-                    class="font-bold text-gray-600 hover:text-indigo-600 transition"
+        <main class="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-16 sm:px-6">
+            <div
+                class="w-full max-w-lg rounded-2xl border border-white/20 bg-white/10 p-8 text-center shadow-2xl backdrop-blur-md sm:p-10"
+            >
+                <p class="text-3xl font-black leading-none tracking-tight text-white sm:text-4xl">
+                    LANZA<span class="text-[#A64B35]">STAY</span>
+                </p>
+
+                <div
+                    v-if="roomNumber"
+                    class="mt-6 rounded-xl border border-[#A64B35]/40 bg-[#A64B35]/20 px-4 py-3"
                 >
-                    Panel de Control
-                </Link>
-                <template v-else>
-                    <Link
-                        :href="route('login')"
-                        class="bg-gray-100 px-4 py-2 rounded-lg font-bold text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition"
-                    >
-                        Acceso Empleados
-                    </Link>
-                </template>
-            </nav>
-        </header>
-
-        <main class="flex-1 flex flex-col items-center justify-center text-center p-6 relative bg-cover bg-center bg-[url('/images/hero-bg.avif')]">
-
-                <div class="absolute inset-0 bg-black bg-opacity-40"></div>
-
-                <div class="relative z-10 max-w-3xl text-white mt-[-10vh] animate-in fade-in zoom-in duration-700">
-                    <div
-                        v-if="roomNumber"
-                        class="mb-6 rounded-2xl border border-[#A64B35]/30 bg-white/95 px-6 py-4 text-[#2F2A26] shadow-xl backdrop-blur-sm"
-                    >
-                        <p class="text-sm font-semibold uppercase tracking-wide text-[#A64B35]">LanzaStay</p>
-                        <p class="mt-1 text-2xl font-black md:text-3xl">¡Bienvenido! Estás en la Habitación {{ roomNumber }}</p>
-                    </div>
-
-                    <h1 class="text-5xl md:text-7xl font-black mb-6 drop-shadow-lg tracking-tight">Tu descanso en el paraíso.</h1>
-                    <p class="text-xl md:text-2xl mb-10 text-gray-100 drop-shadow-md font-light">
-                        La experiencia más moderna de la isla. Relájate, pide desde tu cama y disfruta de las vistas.
+                    <p class="text-xs font-semibold uppercase tracking-widest text-[#A64B35]">
+                        Tu habitación
                     </p>
-                <a href="#contacto" class="bg-indigo-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-indigo-700 transition shadow-xl">
-                    Descubre más
-                </a>
+                    <p class="mt-1 text-xl font-bold text-white sm:text-2xl">
+                        Habitación {{ roomNumber }}
+                    </p>
+                </div>
+
+                <p class="mt-6 text-sm leading-relaxed text-white/95 sm:text-base">
+                    Bienvenido a tu estancia. Para acceder a los servicios de tu habitación, por favor escanea el código QR que encontrarás en tu mesita de noche.
+                </p>
             </div>
+
+            <Link
+                v-if="canLogin && !$page.props.auth?.user"
+                :href="route('login')"
+                class="mt-10 inline-flex items-center justify-center rounded-xl border border-white px-8 py-3 text-sm font-semibold tracking-wide text-white transition hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            >
+                Acceso Empleados
+            </Link>
+
+            <Link
+                v-else-if="canLogin && $page.props.auth?.user"
+                :href="route('dashboard')"
+                class="mt-10 inline-flex items-center justify-center rounded-xl border border-white px-8 py-3 text-sm font-semibold tracking-wide text-white transition hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            >
+                Panel Principal
+            </Link>
         </main>
     </div>
 </template>

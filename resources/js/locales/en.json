@@ -1,4 +1,243 @@
 {
-  "nav": { "menu": "Menu", "activities": "Activities", "orders": "My Orders" },
-  "actions": { "order": "Order", "book": "Book your activity", "confirm": "Confirm" }
+  "app": {
+    "title": "Virtual Concierge",
+    "brand": "LANZASTAY"
+  },
+  "menu": {
+    "inicio": "HOME",
+    "pedidos": "MY ORDERS",
+    "perfil": "MY PROFILE",
+    "habitacion": "Room {num}",
+    "ayuda": "HELP",
+    "explora": "Explore",
+    "servicios": "Services",
+    "descubre": "Discover",
+    "actividades": "Activities",
+    "turismo": "Places to discover",
+    "como_llegar": "Directions",
+    "reservar": "Book",
+    "excursion": "Excursion"
+  },
+  "common": {
+    "cerrar": "Close",
+    "idioma": "Language"
+  },
+  "checkout": {
+    "titulo": "Food order",
+    "btn_confirmar": "Confirm order",
+    "placeholder_notas": "E.g. No onion, extra sauce, gluten allergy...",
+    "metodo_pago": "Payment method",
+    "como_pagar": "How would you like to pay?",
+    "cargar_habitacion": "Charge to room",
+    "pagar_tarjeta": "Pay by card",
+    "pagar_ahora": "Pay now by card",
+    "confirmar_pedido": "Confirm order",
+    "confirmar": "Confirm",
+    "cancelar": "Cancel",
+    "total": "Total",
+    "personalizacion": "Customization",
+    "notas_placeholder": "E.g. No onion, extra sauce, gluten allergy...",
+    "cerrar_carrito": "Close cart",
+    "pago_seguro_stripe": "Secure payment with Stripe. Your card details never pass through our servers.",
+    "procesando_pago": "Processing payment...",
+    "enviando": "Sending...",
+    "pagar": "Pay",
+    "confirmar_precio": "Confirm · {price}"
+  },
+  "orders": {
+    "vacio": "You have no registered requests.",
+    "estado": "Status",
+    "pedido_comida": "Food order",
+    "pedido_de": "Order for {item}",
+    "pedido_limpieza": "Cleaning request",
+    "pedido_mantenimiento": "Maintenance request",
+    "pedido": "Order",
+    "cambio_estado": "Your order #{id} changed to {status}.",
+    "steps": {
+      "recibido": "Received",
+      "preparando": "Preparing",
+      "en_camino": "On the way",
+      "entregado": "Delivered"
+    },
+    "status": {
+      "comida": {
+        "recibido": "Pending",
+        "en_proceso": "In kitchen",
+        "en_camino": "On the way",
+        "completado": "Completed",
+        "pagado": "Paid"
+      },
+      "limpieza": {
+        "recibido": "Pending",
+        "en_proceso": "Cleaning",
+        "en_camino": "On the way",
+        "completado": "Completed"
+      },
+      "mantenimiento": {
+        "recibido": "Pending",
+        "en_proceso": "Under review",
+        "en_camino": "On the way",
+        "completado": "Completed"
+      }
+    }
+  },
+  "tracking": {
+    "title": "Request tracking",
+    "pedido_habitacion": "Order #{id} - Room {room}",
+    "estado_actual": "Current status:",
+    "volver_menu": "Back to Menu",
+    "cargando": "Loading tracking...",
+    "steps": {
+      "comida": ["Received", "Preparing", "On the way", "Delivered"],
+      "limpieza": ["Received", "Cleaning", "On the way", "Done"],
+      "mantenimiento": ["Received", "Repairing", "On the way", "Resolved"]
+    }
+  },
+  "services": {
+    "volver": "Back",
+    "restaurante": "Restaurant",
+    "limpieza": "Cleaning",
+    "mantenimiento": "Maintenance",
+    "bebidas": "Drinks",
+    "comida": "Food",
+    "postres": "Desserts",
+    "entradas": "Starters",
+    "category": {
+      "comida": "Food",
+      "bebida": "Drink",
+      "postre": "Dessert",
+      "entrante": "Starter"
+    },
+    "detalles": "Details",
+    "anadir": "Add",
+    "sin_productos": "No products in this category.",
+    "selecciona_hora": "Select time",
+    "enviar_solicitud": "Send request",
+    "describe_problema": "Describe the issue",
+    "enviar_reporte": "Send report",
+    "veg": "Veg",
+    "vegano": "Vegan/Vegetarian",
+    "ingredientes": "Ingredients (tick what you don't want)",
+    "anadir_pedido": "Add to order"
+  },
+  "amenities": {
+    "panel_title": "Service Requests (Amenities)",
+    "restaurant_heading": "Restaurant Services (Red)",
+    "housekeeping_heading": "Housekeeping",
+    "bottled_water": "Bottled Water",
+    "quick_snack": "Quick Snack",
+    "extra_towels": "Extra Towels",
+    "toilet_paper": "Toilet Paper",
+    "open_board": "Open cleaning board"
+  },
+  "cleaning": {
+    "quick_actions": "Quick amenities",
+    "quick_actions_hint": "One tap — no typing. We will bring it to your room.",
+    "amenity_towels": "Extra towels",
+    "amenity_water": "Bottled water",
+    "amenity_toilet_paper": "Toilet paper",
+    "room_section": "Room cleaning",
+    "request_room_cleaning": "Request cleaning with time",
+    "room_cleaning": "Room cleaning"
+  },
+  "activities": {
+    "sin_disponibles": "No hotel activities available at the moment.",
+    "gratis": "Free",
+    "plazas": "{n} seats",
+    "cuantos_son": "How many guests?",
+    "precio_total": "Total price:",
+    "confirmar_reserva": "Confirm booking",
+    "reserva_confirmada": "Booking confirmed",
+    "numero_plazas": "Number of seats",
+    "reservar_bus": "Book bus",
+    "total_label": "Total:"
+  },
+  "tourism": {
+    "lugar": "Tourist spot",
+    "sin_descripcion": "No description available.",
+    "cerrar": "Close",
+    "places": {
+      "timanfaya": "Discover the Fire Mountains, a unique lunar landscape shaped by volcanic eruptions. Explore Timanfaya National Park on guided routes, watch steam geysers, and feel Lanzarote's volcanic energy in an unforgettable experience.",
+      "jameos": "Step into Jameos del Agua, a César Manrique masterpiece where lava and design meet in harmony. Walk through volcanic tunnels, admire an underground lake, and enjoy an artistic natural setting like no other.",
+      "cueva": "Explore the Green Caves, a volcanic labyrinth over six kilometres long formed thousands of years ago. Discover lit galleries, dramatic light and shadow, and the geological story behind the island.",
+      "mirador": "Take in Lanzarote from the River Viewpoint, with panoramic views over the Chinijo archipelago and the Atlantic Ocean. A spectacular lookout perfect for photos, sunsets, and quiet moments on the cliff.",
+      "geria": "Tour La Geria, the heart of Lanzarote's wine country. Walk among vineyards sheltered by volcanic stone walls, taste local wines, and discover a farming landscape found nowhere else on earth.",
+      "manrique": "Visit the César Manrique Foundation, dedicated to the artist who reshaped how nature and architecture coexist on the island. Explore rooms, gardens, and exhibitions celebrating his creative legacy."
+    }
+  },
+  "profile": {
+    "email_huesped": "Guest email",
+    "no_disponible": "Not available",
+    "mis_reservas": "My activity bookings",
+    "total": "Total",
+    "plazas_reserva": "Seats: {seats} · {price}",
+    "status": {
+      "pendiente": "Pending",
+      "confirmada": "Confirmed",
+      "cancelada": "Cancelled"
+    },
+    "tipo_bus": "Bus",
+    "tipo_actividad": "Activity"
+  },
+  "help": {
+    "titulo": "Help & Contact",
+    "llamar": "Call Reception",
+    "whatsapp": "WhatsApp"
+  },
+  "notifications": {
+    "pedido_confirmado": "Order confirmed!",
+    "pago_confirmado": "Payment confirmed! The kitchen is preparing your order.",
+    "error_pedido": "Could not confirm the order. Please try again.",
+    "error_pago": "Could not process payment. Please try again.",
+    "tarjeta_modal": "To pay by card, confirm each dish from its order modal.",
+    "comida_enviada": "Food order sent.",
+    "limpieza_enviada": "Cleaning request sent.",
+    "amenity_enviada": "Amenity requested. We will deliver it shortly.",
+    "mantenimiento_enviado": "Maintenance report sent.",
+    "reserva_ok": "Booking confirmed.",
+    "reserva_error": "Could not confirm booking.",
+    "reserva_recepcion": "Booking sent to reception.",
+    "error_reserva": "Could not complete booking.",
+    "error_enviar_pedido": "Could not send order.",
+    "error_enviar_solicitud": "Could not send request.",
+    "error_enviar_reporte": "Could not send report.",
+    "selecciona_hora_limpieza": "Select a time for cleaning.",
+    "describe_averia": "Describe the issue to continue.",
+    "stripe_no_config": "Stripe is not configured. Check STRIPE_KEY and VITE_STRIPE_KEY on the server.",
+    "stripe_load_error": "Could not load the payment form. Check your connection and try again.",
+    "stripe_loading": "Loading secure payment form…",
+    "stripe_retry": "Try again",
+    "introduce_tarjeta": "Enter your card details.",
+    "tarjeta_invalida": "Could not validate card."
+  },
+  "actions": {
+    "order": "Order",
+    "book": "Book your activity",
+    "confirm": "Confirm"
+  },
+  "chat": {
+    "saludo": "Hello! I'm the LanzaStay 360 Assistant. How can I help you today?",
+    "titulo": "360 Assistant",
+    "escribiendo": "Typing...",
+    "placeholder": "Type your message…",
+    "abrir": "Open assistant chat (draggable)",
+    "cerrar": "Close chat",
+    "enviar": "Send message",
+    "error_respuesta": "I couldn't generate a response.",
+    "error_conexion": "I can't reply right now. Use the HELP button to contact reception."
+  },
+  "welcome": {
+    "title": "Welcome",
+    "titulo": "Welcome",
+    "subtitulo": "Room {room} · Enter your email to continue.",
+    "email": "Email",
+    "email_placeholder": "you@email.com",
+    "entrar": "Enter"
+  },
+  "errors": {
+    "menu_title": "Menu unavailable",
+    "menu_default": "The menu cannot be loaded right now.",
+    "acceso_title": "Access unavailable",
+    "habitacion_inactiva": "Room inactive. Please check in at reception."
+  }
 }

@@ -1,16 +1,30 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-defineProps({
+const props = defineProps({
     message: {
         type: String,
-        default: 'No se puede cargar el menú en este momento.',
+        default: '',
     },
+});
+
+const { t } = useI18n();
+
+const displayMessage = computed(() => {
+    if (!props.message) {
+        return t('errors.menu_default');
+    }
+    if (props.message.includes('Habitación inactiva') || props.message.includes('check-in')) {
+        return t('errors.habitacion_inactiva');
+    }
+    return props.message;
 });
 </script>
 
 <template>
-    <Head title="Menú no disponible" />
+    <Head :title="$t('errors.menu_title')" />
 
     <div class="min-h-screen bg-[#F5F5F5] flex items-center justify-center px-4">
         <div class="max-w-xl w-full bg-white rounded-2xl border border-[#2F2A26]/10 p-8 text-center shadow-sm">
@@ -18,8 +32,8 @@ defineProps({
                 LANZA<span class="text-[#A64B35]">STAY</span>
             </h1>
             <p class="text-[#2F2A26]/80 font-medium">
-                {{ message }}
+                {{ displayMessage }}
             </p>
         </div>
-    </div>
+        </div>
 </template>

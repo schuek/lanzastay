@@ -71,12 +71,12 @@ const formatPrice = (value) => {
                     </div>
 
                     <div class="bg-gray-50 px-6 py-4 flex justify-between items-center">
-                        <Link :href="route('admin.index')" class="text-gray-600 hover:text-gray-900 font-medium">
+                        <Link :href="route('catalog.index')" class="text-gray-600 hover:text-gray-900 font-medium">
                             ← Volver al listado
                         </Link>
 
                         <Link
-                            :href="route('services.edit', service.id)"
+                            :href="route('catalog.edit', service.id)"
                             class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition"
                         >
                             Editar este plato

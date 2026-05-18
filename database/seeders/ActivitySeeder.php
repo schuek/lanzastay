@@ -107,6 +107,7 @@ class ActivitySeeder extends Seeder
         ];
 
         foreach ($activities as $activity) {
+            $activity['plazas_disponibles'] = $activity['max_seats'];
             Activity::create($activity);
         }
     }

@@ -1,4 +1,243 @@
 {
-  "nav": { "menu": "Menú", "activities": "Actividades", "orders": "Mis Pedidos" },
-  "actions": { "order": "Pedir", "book": "Reserva tu actividad", "confirm": "Confirmar" }
+  "app": {
+    "title": "Conserje Virtual",
+    "brand": "LANZASTAY"
+  },
+  "menu": {
+    "inicio": "INICIO",
+    "pedidos": "MIS PEDIDOS",
+    "perfil": "MI PERFIL",
+    "habitacion": "Habitación {num}",
+    "ayuda": "AYUDA",
+    "explora": "Explora",
+    "servicios": "Servicios",
+    "descubre": "Descubre",
+    "actividades": "Actividades",
+    "turismo": "Lugares para descubrir",
+    "como_llegar": "Cómo llegar",
+    "reservar": "Reservar",
+    "excursion": "Excursión"
+  },
+  "common": {
+    "cerrar": "Cerrar",
+    "idioma": "Idioma"
+  },
+  "checkout": {
+    "titulo": "Pedido de comida",
+    "btn_confirmar": "Confirmar pedido",
+    "placeholder_notas": "Ej: Sin cebolla, extra de salsa, alergia al gluten...",
+    "metodo_pago": "Método de pago",
+    "como_pagar": "¿Cómo deseas pagar?",
+    "cargar_habitacion": "Cargar a la habitación",
+    "pagar_tarjeta": "Pagar con tarjeta",
+    "pagar_ahora": "Pagar ahora con tarjeta",
+    "confirmar_pedido": "Confirmar pedido",
+    "confirmar": "Confirmar",
+    "cancelar": "Cancelar",
+    "total": "Total",
+    "personalizacion": "Personalización",
+    "notas_placeholder": "Ej: Sin cebolla, extra de salsa, alergia al gluten...",
+    "cerrar_carrito": "Cerrar carrito",
+    "pago_seguro_stripe": "Pago seguro con Stripe. Los datos de tu tarjeta no pasan por nuestros servidores.",
+    "procesando_pago": "Procesando pago...",
+    "enviando": "Enviando...",
+    "pagar": "Pagar",
+    "confirmar_precio": "Confirmar · {price}"
+  },
+  "orders": {
+    "vacio": "No tienes solicitudes registradas.",
+    "estado": "Estado",
+    "pedido_comida": "Pedido de comida",
+    "pedido_de": "Pedido de {item}",
+    "pedido_limpieza": "Pedido de limpieza",
+    "pedido_mantenimiento": "Pedido de mantenimiento",
+    "pedido": "Pedido",
+    "cambio_estado": "Tu pedido #{id} cambió a {status}.",
+    "steps": {
+      "recibido": "Recibido",
+      "preparando": "Preparando",
+      "en_camino": "En camino",
+      "entregado": "Entregado"
+    },
+    "status": {
+      "comida": {
+        "recibido": "Pendiente",
+        "en_proceso": "En cocina",
+        "en_camino": "En camino",
+        "completado": "Completado",
+        "pagado": "Pagado"
+      },
+      "limpieza": {
+        "recibido": "Pendiente",
+        "en_proceso": "En limpieza",
+        "en_camino": "En camino",
+        "completado": "Completado"
+      },
+      "mantenimiento": {
+        "recibido": "Pendiente",
+        "en_proceso": "En revisión",
+        "en_camino": "En camino",
+        "completado": "Completado"
+      }
+    }
+  },
+  "tracking": {
+    "title": "Seguimiento de solicitud",
+    "pedido_habitacion": "Pedido #{id} - Habitación {room}",
+    "estado_actual": "Estado actual:",
+    "volver_menu": "Volver al Menú",
+    "cargando": "Cargando seguimiento...",
+    "steps": {
+      "comida": ["Recibido", "Preparando", "En camino", "Entregado"],
+      "limpieza": ["Recibido", "Limpiando", "En camino", "Terminado"],
+      "mantenimiento": ["Recibido", "Reparando", "En camino", "Solucionado"]
+    }
+  },
+  "services": {
+    "volver": "Volver",
+    "restaurante": "Restaurante",
+    "limpieza": "Limpieza",
+    "mantenimiento": "Mantenimiento",
+    "bebidas": "Bebidas",
+    "comida": "Comida",
+    "postres": "Postres",
+    "entradas": "Entrantes",
+    "category": {
+      "comida": "Comida",
+      "bebida": "Bebida",
+      "postre": "Postre",
+      "entrante": "Entrante"
+    },
+    "detalles": "Detalles",
+    "anadir": "Añadir",
+    "sin_productos": "No hay productos en esta categoría.",
+    "selecciona_hora": "Selecciona hora",
+    "enviar_solicitud": "Enviar solicitud",
+    "describe_problema": "Describe el problema",
+    "enviar_reporte": "Enviar reporte",
+    "veg": "Veg",
+    "vegano": "Vegano/Vegetariano",
+    "ingredientes": "Ingredientes (marca lo que no quieres)",
+    "anadir_pedido": "Añadir al pedido"
+  },
+  "amenities": {
+    "panel_title": "Peticiones de Servicios (Amenities)",
+    "restaurant_heading": "Servicios Restaurante (Rojo)",
+    "housekeeping_heading": "Limpieza (Housekeeping)",
+    "bottled_water": "Agua Embotellada",
+    "quick_snack": "Bocadillo Rápido",
+    "extra_towels": "Toallas Extras",
+    "toilet_paper": "Papel Higiénico",
+    "open_board": "Ver tablero de limpieza"
+  },
+  "cleaning": {
+    "quick_actions": "Amenities rápidos",
+    "quick_actions_hint": "Un toque — sin escribir. Te lo llevamos a la habitación.",
+    "amenity_towels": "Toallas extras",
+    "amenity_water": "Agua embotellada",
+    "amenity_toilet_paper": "Papel higiénico",
+    "room_section": "Limpieza de habitación",
+    "request_room_cleaning": "Solicitar limpieza con hora",
+    "room_cleaning": "Limpieza de habitación"
+  },
+  "activities": {
+    "sin_disponibles": "No hay actividades del hotel disponibles en este momento.",
+    "gratis": "Gratis",
+    "plazas": "{n} plazas",
+    "cuantos_son": "¿Cuántos son?",
+    "precio_total": "Precio total:",
+    "confirmar_reserva": "Confirmar reserva",
+    "reserva_confirmada": "Reserva confirmada",
+    "numero_plazas": "Número de plazas",
+    "reservar_bus": "Reservar Bus",
+    "total_label": "Total:"
+  },
+  "tourism": {
+    "lugar": "Lugar turístico",
+    "sin_descripcion": "Sin descripción disponible.",
+    "cerrar": "Cerrar",
+    "places": {
+      "timanfaya": "Descubre las Montañas de Fuego, un paisaje lunar único creado por erupciones volcánicas. Recorre el Parque Nacional de Timanfaya en rutas guiadas, contempla géiseres de vapor y siente la energía volcánica de Lanzarote en una experiencia inolvidable.",
+      "jameos": "Sumérgete en los Jameos del Agua, una obra maestra de César Manrique donde la lava y el diseño conviven en armonía. Camina por túneles volcánicos, admira un lago subterráneo y disfruta de un entorno artístico y natural sin igual.",
+      "cueva": "Explora la Cueva de los Verdes, un laberinto volcánico de más de seis kilómetros formado hace miles de años. Descubre galerías iluminadas, contrastes de luz y sombra, y la historia geológica que dio forma a la isla.",
+      "mirador": "Contempla Lanzarote desde el Mirador del Río, con vistas panorámicas sobre el archipiélago Chinijo y el océano Atlántico. Un mirador espectacular ideal para fotografías, atardeceres y momentos de calma sobre el acantilado.",
+      "geria": "Recorre La Geria, el corazón vitivinícola de Lanzarote. Pasea entre viñedos protegidos por muretes de piedra volcánica, degusta vinos locales y conoce un paisaje agrícola único en el mundo.",
+      "manrique": "Visita la Fundación César Manrique, dedicada al artista que transformó la relación entre naturaleza y arquitectura en la isla. Explora salas, jardines y exposiciones que celebran su legado creativo."
+    }
+  },
+  "profile": {
+    "email_huesped": "Email del huésped",
+    "no_disponible": "No disponible",
+    "mis_reservas": "Mis reservas de actividades",
+    "total": "Total",
+    "plazas_reserva": "Plazas: {seats} · {price}",
+    "status": {
+      "pendiente": "Pendiente",
+      "confirmada": "Confirmada",
+      "cancelada": "Cancelada"
+    },
+    "tipo_bus": "Bus",
+    "tipo_actividad": "Actividad"
+  },
+  "help": {
+    "titulo": "Ayuda y Contacto",
+    "llamar": "Llamar a Recepción",
+    "whatsapp": "WhatsApp"
+  },
+  "notifications": {
+    "pedido_confirmado": "¡Pedido confirmado!",
+    "pago_confirmado": "¡Pago confirmado! La cocina ya está preparando tu pedido.",
+    "error_pedido": "No se pudo confirmar el pedido. Inténtalo de nuevo.",
+    "error_pago": "No se pudo procesar el pago. Inténtalo de nuevo.",
+    "tarjeta_modal": "Para pagar con tarjeta, confirma cada plato desde su modal de pedido.",
+    "comida_enviada": "Pedido de comida enviado.",
+    "limpieza_enviada": "Solicitud de limpieza enviada.",
+    "amenity_enviada": "Amenity solicitado. Lo llevamos en breve.",
+    "mantenimiento_enviado": "Reporte de mantenimiento enviado.",
+    "reserva_ok": "Reserva confirmada.",
+    "reserva_error": "No se pudo confirmar la reserva.",
+    "reserva_recepcion": "Reserva enviada a recepción.",
+    "error_reserva": "No se pudo completar la reserva.",
+    "error_enviar_pedido": "No se pudo enviar el pedido.",
+    "error_enviar_solicitud": "No se pudo enviar la solicitud.",
+    "error_enviar_reporte": "No se pudo enviar el reporte.",
+    "selecciona_hora_limpieza": "Selecciona una hora para limpieza.",
+    "describe_averia": "Describe la avería para continuar.",
+    "stripe_no_config": "Stripe no está configurado. Revisa STRIPE_KEY y VITE_STRIPE_KEY en el servidor.",
+    "stripe_load_error": "No se pudo cargar el formulario de pago. Comprueba tu conexión e inténtalo de nuevo.",
+    "stripe_loading": "Cargando formulario de pago seguro…",
+    "stripe_retry": "Reintentar",
+    "introduce_tarjeta": "Introduce los datos de la tarjeta.",
+    "tarjeta_invalida": "No se pudo validar la tarjeta."
+  },
+  "actions": {
+    "order": "Pedir",
+    "book": "Reserva tu actividad",
+    "confirm": "Confirmar"
+  },
+  "chat": {
+    "saludo": "¡Hola! Soy el Asistente 360 de LanzaStay. ¿En qué puedo ayudarte hoy?",
+    "titulo": "Asistente 360",
+    "escribiendo": "Escribiendo...",
+    "placeholder": "Escribe tu mensaje…",
+    "abrir": "Abrir chat con el asistente (arrastrable)",
+    "cerrar": "Cerrar chat",
+    "enviar": "Enviar mensaje",
+    "error_respuesta": "No he podido generar una respuesta.",
+    "error_conexion": "En este momento no puedo responderte. Usa el botón AYUDA para contactar con recepción."
+  },
+  "welcome": {
+    "title": "Bienvenida",
+    "titulo": "Bienvenido/a",
+    "subtitulo": "Habitación {room} · Introduce tu email para continuar.",
+    "email": "Email",
+    "email_placeholder": "tu@email.com",
+    "entrar": "Entrar"
+  },
+  "errors": {
+    "menu_title": "Menú no disponible",
+    "menu_default": "No se puede cargar el menú en este momento.",
+    "acceso_title": "Acceso no disponible",
+    "habitacion_inactiva": "Habitación inactiva. Por favor, realice el check-in."
+  }
 }

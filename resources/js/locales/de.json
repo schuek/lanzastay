@@ -1,4 +1,250 @@
 {
-  "nav": { "menu": "Menü", "activities": "Aktivitäten", "orders": "Meine Bestellungen" },
-  "actions": { "order": "Bestellen", "book": "Aktivität buchen", "confirm": "Bestätigen" }
+  "app": {
+    "title": "Virtueller Concierge",
+    "brand": "LANZASTAY"
+  },
+  "menu": {
+    "inicio": "Startseite",
+    "pedidos": "Meine Bestellungen",
+    "perfil": "Mein Profil",
+    "habitacion": "Zimmer {num}",
+    "ayuda": "Hilfe",
+    "explora": "Erkunden",
+    "servicios": "Dienstleistungen",
+    "descubre": "Entdecken",
+    "actividades": "Aktivitäten",
+    "turismo": "Orte zum Entdecken",
+    "como_llegar": "Anfahrt",
+    "reservar": "Reservieren",
+    "excursion": "Ausflug"
+  },
+  "common": {
+    "cerrar": "Schließen",
+    "idioma": "Sprache"
+  },
+  "checkout": {
+    "titulo": "Essensbestellung",
+    "btn_confirmar": "Bestellung bestätigen",
+    "placeholder_notas": "Z.B.: Ohne Zwiebeln, extra Soße, Glutenallergie...",
+    "metodo_pago": "Zahlungsmethode",
+    "como_pagar": "Wie möchten Sie bezahlen?",
+    "cargar_habitacion": "Auf's Zimmer schreiben",
+    "pagar_tarjeta": "Mit Karte zahlen",
+    "pagar_ahora": "Jetzt mit Karte zahlen",
+    "confirmar_pedido": "Bestellung bestätigen",
+    "confirmar": "Bestätigen",
+    "cancelar": "Abbrechen",
+    "total": "Gesamt",
+    "personalizacion": "Anpassung",
+    "notas_placeholder": "Z.B.: Ohne Zwiebeln, extra Soße, Glutenallergie...",
+    "cerrar_carrito": "Warenkorb schließen",
+    "pago_seguro_stripe": "Sichere Zahlung mit Stripe. Ihre Kartendaten passieren nicht über unsere Server.",
+    "procesando_pago": "Zahlung wird verarbeitet...",
+    "enviando": "Wird gesendet...",
+    "pagar": "Bezahlen",
+    "confirmar_precio": "Bestätigen · {price}",
+    "mensaje_stripe": "Sie werden zur sicheren Stripe-Zahlungsumgebung weitergeleitet.",
+    "btn_pagar": "Zur Kasse - {total}",
+    "btn_cancelar": "Abbrechen"
+  },
+  "orders": {
+    "vacio": "Sie haben keine registrierten Anfragen.",
+    "estado": "Status",
+    "pedido_comida": "Essensbestellung",
+    "pedido_de": "Bestellung von {item}",
+    "pedido_limpieza": "Reinigungsanfrage",
+    "pedido_mantenimiento": "Wartungsanfrage",
+    "pedido": "Bestellung",
+    "cambio_estado": "Ihre Bestellung Nr. {id} hat den Status {status}.",
+    "steps": {
+      "recibido": "Erhalten",
+      "preparando": "In Zubereitung",
+      "en_camino": "Unterwegs",
+      "entregado": "Geliefert"
+    },
+    "status": {
+      "comida": {
+        "recibido": "Ausstehend",
+        "en_proceso": "In der Küche",
+        "en_camino": "Unterwegs",
+        "completado": "Abgeschlossen",
+        "pagado": "Bezahlt"
+      },
+      "limpieza": {
+        "recibido": "Ausstehend",
+        "en_proceso": "Reinigung läuft",
+        "en_camino": "Unterwegs",
+        "completado": "Abgeschlossen"
+      },
+      "mantenimiento": {
+        "recibido": "Ausstehend",
+        "en_proceso": "In Prüfung",
+        "en_camino": "Unterwegs",
+        "completado": "Abgeschlossen"
+      }
+    },
+    "estado_recibido": "Erhalten",
+    "estado_cocina": "In der Küche",
+    "estado_camino": "Unterwegs",
+    "estado_entregado": "Zugestellt"
+  },
+  "tracking": {
+    "title": "Anfrageverfolgung",
+    "pedido_habitacion": "Bestellung Nr. {id} - Zimmer {room}",
+    "estado_actual": "Aktueller Status:",
+    "volver_menu": "Zurück zum Menü",
+    "cargando": "Verfolgung wird geladen...",
+    "steps": {
+      "comida": ["Erhalten", "In Zubereitung", "Unterwegs", "Geliefert"],
+      "limpieza": ["Erhalten", "Reinigung", "Unterwegs", "Erledigt"],
+      "mantenimiento": ["Erhalten", "Reparatur", "Unterwegs", "Behoben"]
+    }
+  },
+  "services": {
+    "volver": "Zurück",
+    "restaurante": "Restaurant",
+    "limpieza": "Reinigung",
+    "mantenimiento": "Wartung",
+    "bebidas": "Getränke",
+    "comida": "Speisen",
+    "postres": "Desserts",
+    "entradas": "Vorspeisen",
+    "category": {
+      "comida": "Speise",
+      "bebida": "Getränk",
+      "postre": "Dessert",
+      "entrante": "Vorspeise"
+    },
+    "detalles": "Details",
+    "anadir": "Hinzufügen",
+    "sin_productos": "Keine Produkte in dieser Kategorie.",
+    "selecciona_hora": "Uhrzeit wählen",
+    "enviar_solicitud": "Anfrage senden",
+    "describe_problema": "Problem beschreiben",
+    "enviar_reporte": "Meldung senden",
+    "veg": "Veg",
+    "vegano": "Vegan/Vegetarisch",
+    "ingredientes": "Zutaten (markieren Sie, was Sie nicht möchten)",
+    "anadir_pedido": "Zur Bestellung hinzufügen"
+  },
+  "amenities": {
+    "panel_title": "Serviceanfragen (Amenities)",
+    "restaurant_heading": "Restaurantservice (Rot)",
+    "housekeeping_heading": "Housekeeping",
+    "bottled_water": "Mineralwasser",
+    "quick_snack": "Schneller Snack",
+    "extra_towels": "Extra Handtücher",
+    "toilet_paper": "Toilettenpapier",
+    "open_board": "Reinigungstafel öffnen"
+  },
+  "cleaning": {
+    "quick_actions": "Schnelle Amenities",
+    "quick_actions_hint": "Ein Tipp — ohne Tippen. Wir bringen es ins Zimmer.",
+    "amenity_towels": "Extra Handtücher",
+    "amenity_water": "Mineralwasser",
+    "amenity_toilet_paper": "Toilettenpapier",
+    "room_section": "Zimmerreinigung",
+    "request_room_cleaning": "Reinigung mit Uhrzeit anfragen",
+    "room_cleaning": "Zimmerreinigung"
+  },
+  "activities": {
+    "sin_disponibles": "Derzeit sind keine Hotelaktivitäten verfügbar.",
+    "gratis": "Kostenlos",
+    "plazas": "{n} Plätze",
+    "cuantos_son": "Wie viele Personen sind Sie?",
+    "precio_total": "Gesamtpreis:",
+    "confirmar_reserva": "Reservierung bestätigen",
+    "reserva_confirmada": "Reservierung bestätigt",
+    "numero_plazas": "Anzahl der Plätze",
+    "reservar_bus": "Bus reservieren",
+    "total_label": "Gesamt:"
+  },
+  "tourism": {
+    "lugar": "Sehenswürdigkeit",
+    "sin_descripcion": "Keine Beschreibung verfügbar.",
+    "cerrar": "Schließen",
+    "places": {
+      "timanfaya": "Entdecken Sie die Feuerberge, eine einzigartige Mondlandschaft aus vulkanischen Eruptionen. Erkunden Sie den Nationalpark Timanfaya mit Führungen, Dampfgeysiren und unvergesslicher Vulkanenergie.",
+      "jameos": "Tauchen Sie ein in die Jameos del Agua, ein Meisterwerk von César Manrique, in dem Lava und Design harmonisch verschmelzen. Vulkanische Tunnel, ein unterirdischer See und ein künstlerisches Naturerlebnis erwarten Sie.",
+      "cueva": "Erkunden Sie die Grüne Grotte, ein vulkanisches Labyrinth von über sechs Kilometern. Beleuchtete Gänge und die geologische Geschichte der Insel stehen im Mittelpunkt.",
+      "mirador": "Genießen Sie den Blick vom Mirador del Río über den Chinijo-Archipel und den Atlantik. Ein spektakulärer Aussichtspunkt für Fotos und Sonnenuntergänge.",
+      "geria": "Spazieren Sie durch La Geria, das Weinherz Lanzarotes. Weinberge hinter vulkanischen Steinmauern, Verkostungen und eine einzigartige Kulturlandschaft.",
+      "manrique": "Besuchen Sie die Fundación César Manrique mit Räumen, Gärten und Ausstellungen zum künstlerischen Erbe des Inselvisionärs."
+    }
+  },
+  "profile": {
+    "email_huesped": "E-Mail des Gastes",
+    "no_disponible": "Nicht verfügbar",
+    "mis_reservas": "Meine Aktivitätsreservierungen",
+    "total": "Gesamt",
+    "plazas_reserva": "Plätze: {seats} · {price}",
+    "status": {
+      "pendiente": "Ausstehend",
+      "confirmada": "Bestätigt",
+      "cancelada": "Storniert"
+    },
+    "tipo_bus": "Bus",
+    "tipo_actividad": "Aktivität"
+  },
+  "help": {
+    "titulo": "Hilfe & Kontakt",
+    "llamar": "Rezeption anrufen",
+    "whatsapp": "WhatsApp"
+  },
+  "notifications": {
+    "pedido_confirmado": "Bestellung bestätigt!",
+    "pago_confirmado": "Zahlung bestätigt! Die Küche bereitet Ihre Bestellung bereits zu.",
+    "error_pedido": "Die Bestellung konnte nicht bestätigt werden. Bitte versuchen Sie es erneut.",
+    "error_pago": "Die Zahlung konnte nicht verarbeitet werden. Bitte versuchen Sie es erneut.",
+    "tarjeta_modal": "Um mit Karte zu zahlen, bestätigen Sie jedes Gericht im Bestellfenster.",
+    "comida_enviada": "Essensbestellung gesendet.",
+    "limpieza_enviada": "Reinigungsanfrage gesendet.",
+    "amenity_enviada": "Amenity angefordert. Wir liefern es in Kürze.",
+    "mantenimiento_enviado": "Wartungsmeldung gesendet.",
+    "reserva_ok": "Reservierung bestätigt.",
+    "reserva_error": "Die Reservierung konnte nicht bestätigt werden.",
+    "reserva_recepcion": "Reservierung an die Rezeption gesendet.",
+    "error_reserva": "Die Reservierung konnte nicht abgeschlossen werden.",
+    "error_enviar_pedido": "Die Bestellung konnte nicht gesendet werden.",
+    "error_enviar_solicitud": "Die Anfrage konnte nicht gesendet werden.",
+    "error_enviar_reporte": "Die Meldung konnte nicht gesendet werden.",
+    "selecciona_hora_limpieza": "Wählen Sie eine Uhrzeit für die Reinigung.",
+    "describe_averia": "Beschreiben Sie das Problem, um fortzufahren.",
+    "stripe_no_config": "Stripe ist nicht konfiguriert. Prüfen Sie STRIPE_KEY und VITE_STRIPE_KEY auf dem Server.",
+    "stripe_load_error": "Zahlungsformular konnte nicht geladen werden. Verbindung prüfen und erneut versuchen.",
+    "stripe_loading": "Sicheres Zahlungsformular wird geladen…",
+    "stripe_retry": "Erneut versuchen",
+    "introduce_tarjeta": "Geben Sie Ihre Kartendaten ein.",
+    "tarjeta_invalida": "Die Karte konnte nicht validiert werden."
+  },
+  "actions": {
+    "order": "Bestellen",
+    "book": "Aktivität buchen",
+    "confirm": "Bestätigen"
+  },
+  "chat": {
+    "saludo": "Hallo! Ich bin der LanzaStay 360-Assistent. Wie kann ich Ihnen heute helfen?",
+    "titulo": "360-Assistent",
+    "escribiendo": "Schreibt...",
+    "placeholder": "Nachricht eingeben…",
+    "abrir": "Chat mit dem Assistenten öffnen (verschiebbar)",
+    "cerrar": "Chat schließen",
+    "enviar": "Nachricht senden",
+    "error_respuesta": "Es konnte keine Antwort generiert werden.",
+    "error_conexion": "Ich kann Ihnen gerade nicht antworten. Nutzen Sie die Hilfe-Schaltfläche, um die Rezeption zu kontaktieren."
+  },
+  "welcome": {
+    "title": "Willkommen",
+    "titulo": "Willkommen",
+    "subtitulo": "Zimmer {room} · Geben Sie Ihre E-Mail ein, um fortzufahren.",
+    "email": "E-Mail",
+    "email_placeholder": "sie@email.com",
+    "entrar": "Eintreten"
+  },
+  "errors": {
+    "menu_title": "Menü nicht verfügbar",
+    "menu_default": "Das Menü kann derzeit nicht geladen werden.",
+    "acceso_title": "Zugang nicht verfügbar",
+    "habitacion_inactiva": "Zimmer inaktiv. Bitte checken Sie an der Rezeption ein."
+  }
 }

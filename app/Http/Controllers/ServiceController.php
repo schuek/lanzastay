@@ -9,29 +9,30 @@ use App\Models\Category;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Models\Habitacion;
 use App\Models\Order;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use App\Support\UserRole;
 
 class ServiceController extends Controller
 {
-    public function welcomeGuest(Request $request)
+    public function welcomeGuest(Request $request, Habitacion $habitacion)
     {
-        $roomNumber = $request->query('habitacion');
         $token = $request->query('token');
-        $room = Habitacion::query()->where('numero', $roomNumber)->first();
 
-        if (! $room || $room->status !== 'ocupada') {
+        if ($habitacion->status !== 'ocupada') {
             return Inertia::render('ClientAccessDenied', [
                 'message' => 'Bienvenido a LanzaStay. Por favor, realice su check-in en recepción para empezar a usar nuestros servicios.',
             ]);
         }
 
-        if ($token !== null && $token !== '' && $token !== $room->current_session_token) {
+        if ($token !== null && $token !== '' && $token !== $habitacion->current_session_token) {
             return Inertia::render('ClientAccessDenied', [
                 'message' => 'Sesion no valida para esta habitacion. Solicita un nuevo acceso en recepcion.',
             ]);
         }
 
-        $sessionToken = $room->current_session_token ?? '';
+        $sessionToken = $habitacion->current_session_token ?? '';
         if ($sessionToken === '') {
             return Inertia::render('ClientAccessDenied', [
                 'message' => 'Sesion no valida para esta habitacion. Solicita un nuevo acceso en recepcion.',
@@ -39,21 +40,22 @@ class ServiceController extends Controller
         }
 
         return Inertia::render('WelcomeGuest', [
-            'roomNumber' => $room->numero,
+            'roomNumber' => $habitacion->numero,
+            'roomAccessToken' => $habitacion->access_token,
             'sessionToken' => $sessionToken,
-            'guestEmail' => $room->guest_email,
+            'guestEmail' => $habitacion->guest_email,
         ]);
     }
 
     public function registerGuest(Request $request)
     {
         $validated = $request->validate([
-            'room_number' => 'required|string|exists:habitacions,numero',
+            'access_token' => 'required|uuid|exists:habitacions,access_token',
             'session_token' => 'required|string',
             'guest_email' => 'required|email:rfc,dns|max:255',
         ]);
 
-        $room = Habitacion::query()->where('numero', $validated['room_number'])->firstOrFail();
+        $room = Habitacion::query()->where('access_token', $validated['access_token'])->firstOrFail();
 
         if ($room->status !== 'ocupada' || $room->current_session_token !== $validated['session_token']) {
             return Inertia::render('ClientAccessDenied', [
@@ -65,26 +67,24 @@ class ServiceController extends Controller
             'guest_email' => strtolower($validated['guest_email']),
         ]);
 
-        return redirect()->route('menu.show', [
-            'numero' => $room->numero,
-        ]);
+        return redirect()->route('menu.show', $room);
     }
 
-public function admin()
+    public function admin()
     {
-        $services = Service::with('category')->latest()->get();
-
-        $categories = Category::all();
+        Gate::authorize('manage-catalog');
 
         return Inertia::render('Admin/Index', [
-            'services' => $services,
-            'categories' => $categories
+            'services' => $this->catalogServicesQuery()->get(),
         ]);
     }
 
     //2.eliminar UN servicio
     public function destroy(Service $service)
     {
+        Gate::authorize('manage-catalog');
+        $this->assertKitchenCanAccessService($service);
+
         $service->delete();
         return redirect()->back();
     }
@@ -92,14 +92,19 @@ public function admin()
     //mostrar formulario vacio
     public function create()
     {
+        Gate::authorize('manage-catalog');
+
         return Inertia::render('Admin/Create', [
-            'categories' => Category::all() // Necesitamos las categorías para el desplegable
+            'categories' => $this->catalogCategoriesForUser(),
         ]);
     }
 
     //mostrar detalles
     public function show(Service $service)
     {
+        Gate::authorize('manage-catalog');
+        $this->assertKitchenCanAccessService($service);
+
         $service->load('category');
         return Inertia::render('Admin/Show', [
             'service' => $service
@@ -109,23 +114,28 @@ public function admin()
     //editar un servicio
     public function edit(Service $service)
     {
+        Gate::authorize('manage-catalog');
+        $this->assertKitchenCanAccessService($service);
+
         return Inertia::render('Admin/Edit', [
             'service' => $service,
-            'categories' => Category::all()
+            'categories' => $this->catalogCategoriesForUser(),
         ]);
     }
 
     //Guardar nuevo servicio
     public function store(Request $request)
     {
+        Gate::authorize('manage-catalog');
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'category_id' => 'required|numeric',
             'service_type' => 'required|in:comida,limpieza,mantenimiento',
-            'service_category' => 'nullable|string|in:Comida,Bebida,Postre,Limpieza,Mantenimiento',
-            'categoria_restaurante' => 'nullable|string|in:Comida,Bebida,Postre',
+            'service_category' => 'nullable|string|in:Comida,Bebida,Postre,Entrante,Limpieza,Mantenimiento',
+            'categoria_restaurante' => 'nullable|string|in:Comida,Bebida,Postre,Entrante',
             'horario' => 'nullable|string|in:Desayuno,Almuerzo,Cena,Todo el dia',
             'ingredients' => 'nullable|array',
             'ingredients.*' => 'string|max:120',
@@ -133,20 +143,23 @@ public function admin()
             'image_url' => 'nullable|url|max:2048',
         ]);
 
-        Service::create($this->normalizeServicePayload($validated));
-        return to_route('admin.index');
+        Service::create($this->normalizeServicePayload($this->applyKitchenCatalogConstraints($validated)));
+        return to_route('catalog.index');
     }
 
     public function update(Request $request, Service $service)
     {
+        Gate::authorize('manage-catalog');
+        $this->assertKitchenCanAccessService($service);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'category_id' => 'required|numeric',
             'service_type' => 'required|in:comida,limpieza,mantenimiento',
-            'service_category' => 'nullable|string|in:Comida,Bebida,Postre,Limpieza,Mantenimiento',
-            'categoria_restaurante' => 'nullable|string|in:Comida,Bebida,Postre',
+            'service_category' => 'nullable|string|in:Comida,Bebida,Postre,Entrante,Limpieza,Mantenimiento',
+            'categoria_restaurante' => 'nullable|string|in:Comida,Bebida,Postre,Entrante',
             'horario' => 'nullable|string|in:Desayuno,Almuerzo,Cena,Todo el dia',
             'ingredients' => 'nullable|array',
             'ingredients.*' => 'string|max:120',
@@ -154,9 +167,9 @@ public function admin()
             'image_url' => 'nullable|url|max:2048',
         ]);
 
-        $service->update($this->normalizeServicePayload($validated));
+        $service->update($this->normalizeServicePayload($this->applyKitchenCatalogConstraints($validated)));
 
-        return to_route('admin.index');
+        return to_route('catalog.index');
     }
 
     private function normalizeServicePayload(array $validated): array
@@ -173,7 +186,7 @@ public function admin()
 
         $isRestaurantService = $validated['service_type'] === 'comida';
         $restaurantCategory = $isRestaurantService
-            ? ($validated['categoria_restaurante'] ?? ($serviceCategory === 'Bebida' || $serviceCategory === 'Postre' ? $serviceCategory : 'Comida'))
+            ? ($validated['categoria_restaurante'] ?? (in_array($serviceCategory, ['Bebida', 'Postre', 'Entrante'], true) ? $serviceCategory : 'Comida'))
             : null;
         $schedule = $isRestaurantService
             ? ($validated['horario'] ?? 'Todo el dia')
@@ -189,6 +202,54 @@ public function admin()
         ];
     }
 
+    private function isKitchenCatalogRole(): bool
+    {
+        return auth()->user()?->role === UserRole::COCINA;
+    }
+
+    private function catalogServicesQuery()
+    {
+        return Service::with('category')
+            ->where('service_type', 'comida')
+            ->latest();
+    }
+
+    private function catalogCategoriesForUser()
+    {
+        $query = Category::query()->orderBy('name');
+
+        if ($this->isKitchenCatalogRole()) {
+            $query->where('name', 'Restaurante');
+        }
+
+        return $query->get();
+    }
+
+    private function assertKitchenCanAccessService(Service $service): void
+    {
+        if ($this->isKitchenCatalogRole() && $service->service_type !== 'comida') {
+            abort(403);
+        }
+    }
+
+    private function applyKitchenCatalogConstraints(array $validated): array
+    {
+        if (! $this->isKitchenCatalogRole()) {
+            return $validated;
+        }
+
+        $restaurantCategoryId = Category::query()
+            ->where('name', 'Restaurante')
+            ->value('id');
+
+        $validated['service_type'] = 'comida';
+        if ($restaurantCategoryId) {
+            $validated['category_id'] = $restaurantCategoryId;
+        }
+
+        return $validated;
+    }
+
     public function qrcodes()
 {
     $rooms = Habitacion::query()->where('activa', true)->orderBy('numero')->get();
@@ -196,15 +257,13 @@ public function admin()
     $codes = [];
 
     foreach ($rooms as $room) {
-        $url = route('guest.welcome', [
-            'habitacion' => $room->numero,
-            'token' => $room->current_session_token,
-        ]);
+        $url = route('menu.show', $room);
         $qr = QrCode::size(220)->margin(1)->generate($url);
 
         $codes[] = [
             'id' => $room->id,
             'room' => $room->numero,
+            'access_token' => $room->access_token,
             'status' => $room->status,
             'current_session_token' => $room->current_session_token,
             'menu_url' => $url,
@@ -215,19 +274,34 @@ public function admin()
     return Inertia::render('Admin/QrCodes', [
         'codes' => $codes
     ]);
-
-
 }
 
     public function rooms()
     {
+        Gate::authorize('manage-reception-operations');
+
+        $rooms = Habitacion::query()
+            ->orderBy('numero')
+            ->get()
+            ->map(static fn (Habitacion $room) => [
+                'id' => $room->id,
+                'numero' => $room->numero,
+                'access_token' => $room->access_token,
+                'status' => $room->status,
+                'current_session_token' => $room->current_session_token,
+                'guest_email' => $room->guest_email,
+                'check_in_at' => $room->check_in_at?->toIso8601String(),
+            ]);
+
         return Inertia::render('Admin/Rooms', [
-            'rooms' => Habitacion::query()->orderBy('numero')->get(),
+            'rooms' => $rooms,
         ]);
     }
     // GUARDAR NUEVA HABITACIÓN
     public function storeRoom(Request $request)
     {
+        Gate::authorize('manage-reception-operations');
+
         $request->validate([
             'number' => 'required|string|unique:habitacions,numero|max:10',
             'status' => 'required|in:disponible,ocupada,mantenimiento',
@@ -247,6 +321,8 @@ public function admin()
 
     public function updateRoom(Request $request, Habitacion $room)
     {
+        Gate::authorize('manage-reception-operations');
+
         $request->validate([
             'number' => 'required|string|max:10|unique:habitacions,numero,' . $room->id,
             'status' => 'required|in:disponible,ocupada,mantenimiento',
@@ -273,12 +349,16 @@ public function admin()
     // BORRAR HABITACIÓN
     public function destroyRoom(Habitacion $room)
     {
+        Gate::authorize('manage-reception-operations');
+
         $room->delete();
         return redirect()->back();
     }
 
     public function checkInRoom(Habitacion $room)
     {
+        Gate::authorize('manage-reception-operations');
+
         $validated = request()->validate([
             'guest_email' => 'required|email:rfc,dns|max:255',
         ]);
@@ -287,6 +367,7 @@ public function admin()
             'status' => 'ocupada',
             'current_session_token' => Str::random(40),
             'guest_email' => strtolower($validated['guest_email']),
+            'check_in_at' => now(),
         ]);
 
         return redirect()->back();
@@ -294,17 +375,8 @@ public function admin()
 
     public function checkOutRoom(Habitacion $room)
     {
-        Order::query()
-            ->where('habitacion_id', $room->id)
-            ->where('status', '!=', 'completado')
-            ->update(['status' => 'completado']);
+        Gate::authorize('manage-reception-operations');
 
-        $room->update([
-            'status' => 'disponible',
-            'current_session_token' => null,
-            'guest_email' => null,
-        ]);
-
-        return redirect()->back();
+        return App::make(StayCheckoutController::class)->processRoomCheckout($room);
     }
 }

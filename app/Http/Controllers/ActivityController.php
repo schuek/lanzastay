@@ -8,11 +8,14 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ActivityController extends Controller
 {
     public function index(): Response
     {
+        Gate::authorize('manage-reception-operations');
+
         return Inertia::render('Admin/ActivitiesReservations', [
             'activities' => Activity::query()->latest('date_time')->get(),
             'reservations' => ActivityReservation::query()
@@ -25,7 +28,11 @@ class ActivityController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        Gate::authorize('manage-reception-operations');
+
         $validated = $request->validate($this->rules());
+        $validated['plazas_disponibles'] = $validated['max_seats'];
+
         Activity::query()->create($validated);
 
         return redirect()->back();
@@ -33,6 +40,8 @@ class ActivityController extends Controller
 
     public function update(Request $request, Activity $activity): RedirectResponse
     {
+        Gate::authorize('manage-reception-operations');
+
         $validated = $request->validate($this->rules());
         $activity->update($validated);
 
@@ -41,6 +50,8 @@ class ActivityController extends Controller
 
     public function destroy(Activity $activity): RedirectResponse
     {
+        Gate::authorize('manage-reception-operations');
+
         $activity->delete();
 
         return redirect()->back();

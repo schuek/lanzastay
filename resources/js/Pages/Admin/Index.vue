@@ -1,148 +1,171 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
+import { useRestaurantCategory } from '@/composables/useRestaurantCategory';
 import {
     PencilSquareIcon,
     TrashIcon,
     PlusCircleIcon,
-    CakeIcon,          // Icono Restaurante
-    SparklesIcon,      // Icono Limpieza
-    WrenchScrewdriverIcon // Icono Mantenimiento
+    PhotoIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    services: Array,
-    categories: Array
+    services: {
+        type: Array,
+        default: () => [],
+    },
 });
 
-const activeCategoryId = ref(props.categories[0]?.id || null);
+const { restaurantCategoryLabel, restaurantCategoryBadgeClass } = useRestaurantCategory();
 
-const filteredServices = computed(() => {
-    if (!activeCategoryId.value) return [];
-    return props.services.filter(service => service.category_id === activeCategoryId.value);
-});
-
-const getIcon = (iconName) => {
-    const map = {
-        'CakeIcon': CakeIcon,
-        'SparklesIcon': SparklesIcon,
-        'WrenchScrewdriverIcon': WrenchScrewdriverIcon
-    };
-    return map[iconName] || CakeIcon;
-};
+const catalogServices = computed(() =>
+    (props.services ?? []).filter((service) => (service.service_type ?? 'comida') === 'comida'),
+);
 
 const deleteService = (id) => {
     if (confirm('¿Estás seguro de borrar este servicio?')) {
-        router.delete(route('services.destroy', id));
+        router.delete(route('catalog.destroy', id));
     }
 };
 
-const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
+const formatPrice = (value) =>
+    new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
+
+const neutralBadgeClass = 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-100';
 </script>
 
 <template>
-    <Head title="Gestión de Servicios" />
+    <Head title="Gestión del Catálogo" />
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Gestión del Catálogo</h2>
-                <Link :href="route('services.create')" class="bg-[#A64B35] hover:opacity-90 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm transition">
-                    <PlusCircleIcon class="w-5 h-5" />
-                    Nuevo Servicio
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold leading-tight text-gray-800">Gestión del Catálogo</h2>
+                    <p class="mt-0.5 text-sm text-gray-500">Restaurante — carta y productos del menú</p>
+                </div>
+                <Link
+                    :href="route('catalog.create')"
+                    class="flex items-center gap-2 rounded-full bg-[#A64B35] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+                >
+                    <PlusCircleIcon class="h-5 w-5" />
+                    Nuevo producto
                 </Link>
             </div>
         </template>
 
-        <div class="py-12 bg-gray-50 min-h-screen">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-
-                <div class="flex space-x-2 mb-6 overflow-x-auto pb-2">
-                    <button
-                        v-for="category in categories"
-                        :key="category.id"
-                        @click="activeCategoryId = category.id"
-                        class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-all shadow-sm border"
-                        :class="activeCategoryId === category.id
-                            ? 'bg-[#1A1A1A] text-white border-[#1A1A1A] ring-2 ring-offset-2 ring-[#D45D3B]'
-                            : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'">
-                        <component :is="getIcon(category.icon)" class="w-5 h-5" />
-                        {{ category.name }}
-                        <span class="ml-2 bg-opacity-20 px-2 py-0.5 rounded-full text-xs"
-                            :class="activeCategoryId === category.id ? 'bg-white text-white' : 'bg-gray-200 text-gray-600'">
-                            {{ services.filter(s => s.category_id === category.id).length }}
-                        </span>
-                    </button>
-                </div>
-
-                <div class="bg-white overflow-hidden rounded-2xl shadow-sm border border-gray-100">
-
-                    <table v-if="filteredServices.length > 0" class="min-w-full divide-y divide-gray-200 rounded-2xl">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen URL</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-for="service in filteredServices" :key="service.id" class="hover:bg-gray-50 transition">
-                                <td class="px-6 py-4 whitespace-nowrap font-bold text-gray-900">
-                                    {{ service.name }}
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                    {{ service.description }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#A64B35]">
-                                    {{ formatPrice(service.price) }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">
-                                    {{ service.service_type || 'comida' }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-[#A64B35]/10 text-[#A64B35]">
-                                        {{ service.categoria_restaurante || '-' }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                                        {{ service.horario || '-' }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-xs text-gray-500 max-w-xs truncate">
-                                    {{ service.image_url || '—' }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div class="flex justify-end gap-3">
-                                        <Link :href="route('services.edit', service.id)" class="text-[#A64B35] hover:opacity-70">
-                                            <PencilSquareIcon class="w-5 h-5" />
-                                        </Link>
-                                        <button @click="deleteService(service.id)" class="text-red-600 hover:text-red-900">
-                                            <TrashIcon class="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <div v-else class="text-center py-16">
-                        <div class="bg-gray-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                            <PlusCircleIcon class="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 class="text-lg font-medium text-gray-900">Esta sección está vacía</h3>
-                        <p class="text-gray-500 mb-6">No hay servicios creados en esta categoría todavía.</p>
-                        <Link :href="route('services.create')" class="text-[#A64B35] font-bold hover:underline">
-                            ¡Crea el primero ahora!
-                        </Link>
+        <div class="min-h-screen bg-gray-50 py-12">
+            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <div class="overflow-hidden rounded-2xl border border-gray-100/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.04)]">
+                    <div v-if="catalogServices.length > 0" class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b border-gray-100 bg-gray-50/80">
+                                    <th class="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Imagen
+                                    </th>
+                                    <th class="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Nombre
+                                    </th>
+                                    <th class="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Descripción
+                                    </th>
+                                    <th class="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Precio
+                                    </th>
+                                    <th class="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Categoría
+                                    </th>
+                                    <th class="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Horario
+                                    </th>
+                                    <th class="px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Acciones
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr
+                                    v-for="service in catalogServices"
+                                    :key="service.id"
+                                    class="transition-colors duration-150 hover:bg-gray-50/60"
+                                >
+                                    <td class="whitespace-nowrap px-5 py-4">
+                                        <img
+                                            v-if="service.image_url"
+                                            :src="service.image_url"
+                                            :alt="service.name"
+                                            class="h-11 w-11 shrink-0 rounded-lg object-cover ring-1 ring-gray-100"
+                                        />
+                                        <div
+                                            v-else
+                                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-100 ring-1 ring-gray-100"
+                                        >
+                                            <PhotoIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+                                        </div>
+                                    </td>
+                                    <td class="whitespace-nowrap px-5 py-4 text-sm font-semibold text-gray-900">
+                                        {{ service.name }}
+                                    </td>
+                                    <td class="max-w-xs truncate px-5 py-4 text-sm text-gray-500">
+                                        {{ service.description }}
+                                    </td>
+                                    <td class="whitespace-nowrap px-5 py-4 text-sm font-bold text-gray-900">
+                                        {{ formatPrice(service.price) }}
+                                    </td>
+                                    <td class="whitespace-nowrap px-5 py-4">
+                                        <span
+                                            v-if="restaurantCategoryLabel(service)"
+                                            class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
+                                            :class="restaurantCategoryBadgeClass(restaurantCategoryLabel(service))"
+                                        >
+                                            {{ restaurantCategoryLabel(service) }}
+                                        </span>
+                                        <span v-else class="text-sm text-gray-400">—</span>
+                                    </td>
+                                    <td class="whitespace-nowrap px-5 py-4">
+                                        <span
+                                            class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
+                                            :class="neutralBadgeClass"
+                                        >
+                                            {{ service.horario || '—' }}
+                                        </span>
+                                    </td>
+                                    <td class="whitespace-nowrap px-5 py-4 text-right">
+                                        <div class="flex justify-end gap-1">
+                                            <Link
+                                                :href="route('catalog.edit', service.id)"
+                                                class="rounded-lg p-2 text-gray-400 transition-colors duration-200 hover:bg-blue-50 hover:text-blue-600"
+                                                title="Editar"
+                                            >
+                                                <PencilSquareIcon class="h-5 w-5" />
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                class="rounded-lg p-2 text-gray-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-600"
+                                                title="Eliminar"
+                                                @click="deleteService(service.id)"
+                                            >
+                                                <TrashIcon class="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
+                    <div v-else class="py-16 text-center">
+                        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-50">
+                            <PlusCircleIcon class="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900">El catálogo está vacío</h3>
+                        <p class="mb-6 text-gray-500">Aún no hay productos del restaurante.</p>
+                        <Link :href="route('catalog.create')" class="font-bold text-[#A64B35] hover:underline">
+                            Añadir el primero
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>

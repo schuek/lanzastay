@@ -1,134 +1,95 @@
+
 <script setup>
-import { computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
-import {
-    ClipboardDocumentCheckIcon,
-    HomeIcon,
-    PencilSquareIcon,
-    QrCodeIcon,
-    UserGroupIcon,
-    TicketIcon,
-} from '@heroicons/vue/24/outline';
+import CleaningBoardPanel from '@/Components/Admin/CleaningBoardPanel.vue';
+import MaintenanceBoardPanel from '@/Components/Admin/MaintenanceBoardPanel.vue';
+import KitchenOrdersTable from '@/Components/Dashboard/KitchenOrdersTable.vue';
+import DashboardAdminView from '@/Components/Dashboard/DashboardAdminView.vue';
+import { useAuthRole } from '@/composables/useAuthRole';
+import { Head, Link } from '@inertiajs/vue3';
+import SummaryStatCard from '@/Components/Dashboard/SummaryStatCard.vue';
+import { CakeIcon, PencilSquareIcon, TicketIcon } from '@heroicons/vue/24/outline';
 
-// Definimos las opciones del panel para mantener el código limpio
-const adminOptions = [
-    {
-        title: 'Pedidos Actuales',
-        description: 'Ver y gestionar los pedidos entrantes de las habitaciones.',
-        route: 'admin.orders',
-        roles: ['admin', 'cocina', 'room_service'],
-        icon: ClipboardDocumentCheckIcon,
-        color: 'text-green-600',
-        bg: 'bg-green-50',
-        border: 'hover:border-green-200'
-    },
-    {
-        title: 'Habitaciones',
-        description: 'Añadir, editar o eliminar habitaciones y estados',
-        route: 'habitaciones.index',
-        roles: ['admin', 'recepcion', 'limpieza', 'mantenimiento'],
-        icon: HomeIcon,
-        color: 'text-[#A64B35]',
-        bg: 'bg-orange-50',
-        border: 'hover:border-orange-200'
-    },
-    {
-        title: 'Editar Menú y Servicios',
-        description: 'Añadir platos, cambiar precios o modificar servicios.',
-        route: 'admin.index',
-        roles: ['admin'],
-        icon: PencilSquareIcon,
-        color: 'text-blue-600',
-        bg: 'bg-blue-50',
-        border: 'hover:border-blue-200'
-    },
-    {
-        title: 'Generador de QRs',
-        description: 'Imprimir códigos para las habitaciones (Próximamente).',
-        route: 'admin.qrcodes',
-        roles: ['admin', 'recepcion'],
-        icon: QrCodeIcon,
-        color: 'text-purple-600',
-        bg: 'bg-purple-50',
-        border: 'hover:border-purple-200'
-    },
-    {
-        title: 'Actividades y Reservas',
-        description: 'Gestionar excursiones, actividades y validar reservas de recepción.',
-        route: 'activities.index',
-        roles: ['admin', 'recepcion'],
-        icon: TicketIcon,
-        color: 'text-[#A64B35]',
-        bg: 'bg-[#A64B35]/10',
-        border: 'hover:border-[#A64B35]/30'
-    },
-    {
-        title: 'Personal',
-        description: 'Gestionar perfil y cuenta de administrador.',
-        route: 'profile.edit', // Esta sí existe en Laravel por defecto
-        roles: ['admin', 'recepcion', 'cocina', 'room_service', 'limpieza', 'mantenimiento'],
-        icon: UserGroupIcon,
-        color: 'text-gray-600',
-        bg: 'bg-gray-50',
-        border: 'hover:border-gray-200'
-    },
-];
+defineProps({
+    departmentStats: { type: Object, default: null },
+    operationalKpis: { type: Object, default: null },
+    cleaningOrders: { type: Array, default: () => [] },
+    maintenanceOrders: { type: Array, default: () => [] },
+    kitchenOrders: { type: Array, default: () => [] },
+    totalServices: { type: Number, default: 0 },
+    totalActivities: { type: Number, default: 0 },
+});
 
-const page = usePage();
-
-const currentUserRole = computed(() => page.props.auth?.user?.role ?? null);
-
-const filteredOptions = computed(() =>
-    adminOptions.filter((option) => option.roles.includes(currentUserRole.value))
-);
+const { isRoleReady, roleView } = useAuthRole();
 </script>
 
 <template>
     <Head title="Panel Principal" />
 
     <AuthenticatedLayout>
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    <Link
-                        v-for="option in filteredOptions"
-                        :key="option.title"
-                        :href="option.url ?? route(option.route)"
-                        class="bg-white overflow-hidden shadow-sm sm:rounded-xl p-8 transition-all duration-200 hover:shadow-lg border border-transparent flex items-start gap-6 group"
-                        :class="option.border"
-                    >
-                        <div class="p-4 rounded-2xl shrink-0 transition-colors" :class="option.bg">
-                            <component :is="option.icon" class="w-10 h-10" :class="option.color" />
-                        </div>
-
-                        <div class="flex-1">
-                            <h3 class="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                {{ option.title }}
-                            </h3>
-                            <p class="text-gray-500 mt-2 text-sm leading-relaxed">
-                                {{ option.description }}
-                            </p>
-                        </div>
-
-                        <div class="self-center opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1">
-                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                        </div>
-                    </Link>
-
+        <template v-if="isRoleReady">
+            <div v-if="roleView === 'cleaning'" class="min-h-[calc(100vh-4rem)] bg-[#F0F0F0] py-6 sm:py-8">
+                <div class="mx-auto max-w-3xl px-4 sm:px-6">
+                    <CleaningBoardPanel :orders="cleaningOrders" minimal />
                 </div>
-
-                <div class="mt-10 bg-white shadow-sm rounded-lg p-6 border-t-4 border-indigo-500">
-                    <h3 class="font-bold text-gray-800 mb-2">Estado del Sistema</h3>
-                    <p class="text-gray-600 text-sm">Actualmente el sistema está operativo. Los pedidos entran en tiempo real.</p>
-                </div>
-
             </div>
-        </div>
+
+            <div v-else-if="roleView === 'maintenance'" class="min-h-[calc(100vh-4rem)] bg-[#F0F0F0] py-6 sm:py-8">
+                <div class="mx-auto max-w-3xl px-4 sm:px-6">
+                    <MaintenanceBoardPanel :orders="maintenanceOrders" minimal />
+                </div>
+            </div>
+
+            <div v-else-if="roleView === 'kitchen'" class="py-6 sm:py-8">
+                <div class="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
+                    <div class="flex flex-wrap items-end justify-between gap-4">
+                        <div>
+                            <h1 class="text-2xl font-black text-[#2F2A26]">Cocina</h1>
+                            <p class="mt-1 text-sm text-[#2F2A26]/65">Cola de pedidos y catálogo de productos.</p>
+                        </div>
+                        <Link
+                            :href="route('catalog.index')"
+                            class="inline-flex items-center gap-2 rounded-xl bg-[#A64B35] px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#8f3f2d]"
+                        >
+                            <PencilSquareIcon class="h-5 w-5" />
+                            Editar catálogo
+                        </Link>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <SummaryStatCard title="Total Servicios" :value="totalServices" icon-bg-class="bg-blue-50">
+                            <template #icon>
+                                <CakeIcon class="h-5 w-5 text-blue-600" />
+                            </template>
+                        </SummaryStatCard>
+                        <SummaryStatCard title="Total Actividades" :value="totalActivities" icon-bg-class="bg-[#2F2A26]/5">
+                            <template #icon>
+                                <TicketIcon class="h-5 w-5 text-[#2F2A26]" />
+                            </template>
+                        </SummaryStatCard>
+                    </div>
+
+                    <KitchenOrdersTable :orders="kitchenOrders" compact />
+                </div>
+            </div>
+
+            <DashboardAdminView
+                v-else-if="roleView === 'admin' && operationalKpis"
+                :operational-kpis="operationalKpis"
+                :department-stats="departmentStats"
+                :is-admin="true"
+            />
+
+            <DashboardAdminView
+                v-else-if="roleView === 'recepcion' && operationalKpis"
+                :operational-kpis="operationalKpis"
+                :department-stats="departmentStats"
+                :is-admin="false"
+            />
+
+            <div v-else class="py-12 text-center text-sm text-[#2F2A26]/60">
+                Rol no reconocido. Contacta con administración.
+            </div>
+        </template>
     </AuthenticatedLayout>
 </template>
-

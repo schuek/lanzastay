@@ -7,7 +7,7 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Acceso no disponible" />
+    <Head :title="$t('errors.acceso_title')" />
 
     <div class="min-h-screen bg-[#F5F5F5] flex items-center justify-center px-4">
         <div class="max-w-xl w-full bg-white rounded-2xl border border-[#1A1A1A]/10 p-8 text-center shadow-sm">

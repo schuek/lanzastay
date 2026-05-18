@@ -9,27 +9,31 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import { SUPPORTED_LOCALES } from './bootstrap';
 import es from './locales/es.json';
 import en from './locales/en.json';
-import de from './locales/de.json';
 import fr from './locales/fr.json';
-import it from './locales/it.json';
+import de from './locales/de.json';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 const savedLocale = localStorage.getItem('hotel_lang') || 'es';
+const initialLocale = SUPPORTED_LOCALES.includes(savedLocale) ? savedLocale : 'es';
 
 const i18n = createI18n({
     legacy: false,
-    locale: savedLocale,
+    locale: initialLocale,
     fallbackLocale: 'es',
     messages: {
         es,
         en,
-        de,
         fr,
-        it,
+        de,
     },
 });
+
+document.documentElement.lang = initialLocale;
+
+window.__getI18nLocale = () => i18n.global.locale.value;
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
