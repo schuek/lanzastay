@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Habitacion;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Gate;
 
 class QrCodeController extends Controller
 {
@@ -14,15 +15,22 @@ class QrCodeController extends Controller
         Gate::authorize('manage-reception-operations');
 
         $habitaciones = Habitacion::query()
-            ->select(['id', 'numero', 'access_token'])
             ->orderBy('numero')
             ->get()
-            ->map(static fn (Habitacion $habitacion) => [
-                'id' => $habitacion->id,
-                'numero' => $habitacion->numero,
-                'access_token' => $habitacion->access_token,
-                'menu_url' => route('menu.show', $habitacion),
-            ]);
+            ->map(function (Habitacion $habitacion) {
+                if (empty($habitacion->access_token)) {
+                    $habitacion->forceFill([
+                        'access_token' => (string) Str::uuid(),
+                    ])->saveQuietly();
+                }
+
+                return [
+                    'id' => $habitacion->id,
+                    'numero' => $habitacion->numero,
+                    'access_token' => $habitacion->access_token,
+                    'menu_url' => $habitacion->generateQrUrl(),
+                ];
+            });
 
         return Inertia::render('Admin/QrCodes', [
             'habitaciones' => $habitaciones,

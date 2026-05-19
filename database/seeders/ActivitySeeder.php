@@ -82,7 +82,7 @@ class ActivitySeeder extends Seeder
                 'description' => 'Mantente en forma durante tus vacaciones con nuestras máquinas de última generación.',
                 'type' => 'hotel_activity',
                 'price' => 0,
-                'max_seats' => 30,
+                'max_seats' => null,
                 'date_time' => Carbon::now()->addDay()->setTime(6, 0),
                 'image_url' => '/images/gym.avif',
             ],
@@ -107,7 +107,6 @@ class ActivitySeeder extends Seeder
         ];
 
         foreach ($activities as $activity) {
-            $activity['plazas_disponibles'] = $activity['max_seats'];
             Activity::create($activity);
         }
     }

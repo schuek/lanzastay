@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Activity;
 use App\Models\Order;
 use App\Models\Service;
 use Inertia\Inertia;
@@ -24,7 +23,6 @@ class OrderAdminController extends Controller
         return Inertia::render('Admin/Orders', [
             'orders' => $orders,
             'totalServices' => Service::query()->count(),
-            'totalActivities' => Activity::query()->count(),
         ]);
     }
 }

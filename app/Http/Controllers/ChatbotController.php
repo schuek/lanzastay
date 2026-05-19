@@ -158,9 +158,7 @@ class ChatbotController extends Controller
 
     private function buildMasterPrompt(?Habitacion $habitacion, string $numeroHabitacion, string $listaMenu, string $locale): string
     {
-        $menuUrl = $habitacion?->access_token
-            ? route('menu.show', $habitacion)
-            : '/menu';
+        $menuUrl = $habitacion?->generateQrUrl() ?: '/menu';
 
         return <<<PROMPT
 Eres El Asistente 360 del hotel LanzaStay. Estás hablando con el huésped de la HABITACIÓN {$numeroHabitacion}.

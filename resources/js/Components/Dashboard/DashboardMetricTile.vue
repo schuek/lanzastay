@@ -1,6 +1,10 @@
 <script setup>
 import FaIcon from '@/Components/UI/FaIcon.vue';
-import { metricCardClass } from '@/Components/Dashboard/dashboardThemes';
+import {
+    ICON_METRIC_SIZE,
+    ICON_RING_CLASS,
+    metricCardClass,
+} from '@/Components/Dashboard/dashboardThemes';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -14,7 +18,7 @@ const props = defineProps({
 
 const cardClass = computed(() => [
     metricCardClass(props.department),
-    props.href ? 'group cursor-pointer' : '',
+    props.href ? 'group' : '',
 ]);
 </script>
 
@@ -22,11 +26,17 @@ const cardClass = computed(() => [
     <component
         :is="href ? Link : 'div'"
         :href="href || undefined"
-        class="flex flex-col items-center justify-center px-4 py-6 text-center"
+        class="flex min-h-[9.5rem] flex-col items-center justify-center px-5 py-7 text-center"
         :class="cardClass"
     >
-        <FaIcon :icon="icon" class="text-lg text-[#2F2A26]" />
-        <p class="mt-4 text-[11px] font-semibold uppercase tracking-wider text-[#2F2A26]/55">{{ label }}</p>
-        <p class="mt-1 text-2xl font-bold text-[#2F2A26]">{{ value }}</p>
+        <span :class="[ICON_RING_CLASS, ICON_METRIC_SIZE, 'group-hover:bg-[#A64B35]/12']">
+            <FaIcon :icon="icon" class="text-xl text-[#A64B35]" aria-hidden="true" />
+        </span>
+        <p class="mt-5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2F2A26]/50">
+            {{ label }}
+        </p>
+        <p class="mt-1.5 text-2xl font-bold tabular-nums leading-none text-[#2F2A26]">
+            {{ value }}
+        </p>
     </component>
 </template>

@@ -8,7 +8,7 @@ import DashboardAdminView from '@/Components/Dashboard/DashboardAdminView.vue';
 import { useAuthRole } from '@/composables/useAuthRole';
 import { Head, Link } from '@inertiajs/vue3';
 import SummaryStatCard from '@/Components/Dashboard/SummaryStatCard.vue';
-import { CakeIcon, PencilSquareIcon, TicketIcon } from '@heroicons/vue/24/outline';
+import { CakeIcon, ClipboardDocumentListIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
     departmentStats: { type: Object, default: null },
@@ -16,8 +16,7 @@ defineProps({
     cleaningOrders: { type: Array, default: () => [] },
     maintenanceOrders: { type: Array, default: () => [] },
     kitchenOrders: { type: Array, default: () => [] },
-    totalServices: { type: Number, default: 0 },
-    totalActivities: { type: Number, default: 0 },
+    kitchenStats: { type: Object, default: null },
 });
 
 const { isRoleReady, roleView } = useAuthRole();
@@ -57,14 +56,20 @@ const { isRoleReady, roleView } = useAuthRole();
                     </div>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <SummaryStatCard title="Total Servicios" :value="totalServices" icon-bg-class="bg-blue-50">
+                        <SummaryStatCard
+                            title="Platos en catálogo"
+                            :value="kitchenStats?.catalogDishes ?? 0"
+                        >
                             <template #icon>
-                                <CakeIcon class="h-5 w-5 text-blue-600" />
+                                <CakeIcon class="h-5 w-5 text-[#A64B35]" />
                             </template>
                         </SummaryStatCard>
-                        <SummaryStatCard title="Total Actividades" :value="totalActivities" icon-bg-class="bg-[#2F2A26]/5">
+                        <SummaryStatCard
+                            title="Comandas hoy"
+                            :value="kitchenStats?.ordersToday ?? 0"
+                        >
                             <template #icon>
-                                <TicketIcon class="h-5 w-5 text-[#2F2A26]" />
+                                <ClipboardDocumentListIcon class="h-5 w-5 text-[#A64B35]" />
                             </template>
                         </SummaryStatCard>
                     </div>

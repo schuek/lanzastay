@@ -30,8 +30,7 @@ class ActivityController extends Controller
     {
         Gate::authorize('manage-reception-operations');
 
-        $validated = $request->validate($this->rules());
-        $validated['plazas_disponibles'] = $validated['max_seats'];
+        $validated = $this->normalizeCapacity($request->validate($this->rules()));
 
         Activity::query()->create($validated);
 
@@ -42,8 +41,7 @@ class ActivityController extends Controller
     {
         Gate::authorize('manage-reception-operations');
 
-        $validated = $request->validate($this->rules());
-        $activity->update($validated);
+        $activity->update($this->normalizeCapacity($request->validate($this->rules())));
 
         return redirect()->back();
     }
@@ -65,8 +63,21 @@ class ActivityController extends Controller
             'type' => ['required', 'in:hotel_activity,bus_tour'],
             'date_time' => ['required', 'date'],
             'price' => ['required', 'numeric', 'min:0'],
-            'max_seats' => ['required', 'integer', 'min:1'],
+            'max_seats' => ['nullable', 'integer', 'min:1'],
             'image_url' => ['nullable', 'url', 'max:2048'],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalizeCapacity(array $validated): array
+    {
+        if (! array_key_exists('max_seats', $validated) || $validated['max_seats'] === '' || $validated['max_seats'] === null) {
+            $validated['max_seats'] = null;
+        }
+
+        return $validated;
     }
 }

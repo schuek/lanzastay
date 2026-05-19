@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 const props = defineProps({
     activities: Array,
@@ -65,10 +65,14 @@ const setReservationStatus = (reservationId, status) => {
     router.put(route('activity-reservations.update-status', reservationId), { status });
 };
 
-const busTours = computed(() => props.activities.filter((item) => item.type === 'bus_tour'));
-const hotelActivities = computed(() => props.activities.filter((item) => item.type === 'hotel_activity'));
-
 const formatPrice = (value) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value || 0);
+
+const paymentMethodLabel = (method, totalPrice) => {
+    if (Number(totalPrice ?? 0) <= 0) return 'Gratis';
+    if (method === 'tarjeta') return 'Tarjeta';
+    if (method === 'efectivo') return 'Efectivo';
+    return '—';
+};
 const formatDateTime = (value) => {
     if (value == null || value === '') return '—';
     const date = new Date(value);
@@ -147,7 +151,7 @@ const reservationStatusBadgeClass = (status) => {
                             </select>
                             <input v-model="form.date_time" type="datetime-local" class="rounded-lg border-[#2F2A26]/20 focus:border-[#A64B35] focus:ring-[#A64B35]">
                             <input v-model="form.price" type="number" min="0" step="0.01" placeholder="Precio" class="rounded-lg border-[#2F2A26]/20 focus:border-[#A64B35] focus:ring-[#A64B35]">
-                            <input v-model="form.max_seats" type="number" min="1" step="1" placeholder="Plazas máximas" class="rounded-lg border-[#2F2A26]/20 focus:border-[#A64B35] focus:ring-[#A64B35]">
+                            <input v-model="form.max_seats" type="number" min="1" step="1" placeholder="Vacío = acceso libre (gimnasio)" class="rounded-lg border-[#2F2A26]/20 focus:border-[#A64B35] focus:ring-[#A64B35]">
                             <input v-model="form.image_url" type="url" placeholder="URL imagen (opcional)" class="rounded-lg border-[#2F2A26]/20 focus:border-[#A64B35] focus:ring-[#A64B35]">
                             <textarea v-model="form.description" rows="3" placeholder="Descripción" class="md:col-span-2 rounded-lg border-[#2F2A26]/20 focus:border-[#A64B35] focus:ring-[#A64B35]"></textarea>
                             <div class="md:col-span-2 flex gap-2">
@@ -179,7 +183,9 @@ const reservationStatusBadgeClass = (status) => {
                                     <td class="px-4 py-3 text-sm text-[#2F2A26]/70">{{ activity.type === 'bus_tour' ? 'Bus' : 'Hotel' }}</td>
                                     <td class="px-4 py-3 text-sm text-[#2F2A26]/70">{{ formatDateTime(activity.date_time) }}</td>
                                     <td class="px-4 py-3 text-sm font-bold text-[#A64B35]">{{ formatPrice(activity.price) }}</td>
-                                    <td class="px-4 py-3 text-sm text-[#2F2A26]/70">{{ activity.max_seats }}</td>
+                                    <td class="px-4 py-3 text-sm text-[#2F2A26]/70">
+                                        {{ activity.max_seats ?? 'Ilimitado' }}
+                                    </td>
                                     <td class="px-4 py-3">
                                         <div class="flex justify-end gap-2">
                                             <button @click="startEdit(activity)" class="px-3 py-1 rounded-md bg-[#2F2A26] text-white text-xs font-bold">Editar</button>
@@ -191,20 +197,6 @@ const reservationStatusBadgeClass = (status) => {
                         </table>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <div class="bg-white border border-[#2F2A26]/10 rounded-xl p-4">
-                            <h4 class="font-bold text-[#2F2A26] mb-3">Excursiones (Bus)</h4>
-                            <ul class="space-y-2 text-sm text-[#2F2A26]/80">
-                                <li v-for="item in busTours" :key="item.id">{{ item.name }} - {{ formatDateTime(item.date_time) }}</li>
-                            </ul>
-                        </div>
-                        <div class="bg-white border border-[#2F2A26]/10 rounded-xl p-4">
-                            <h4 class="font-bold text-[#2F2A26] mb-3">Actividades Hotel</h4>
-                            <ul class="space-y-2 text-sm text-[#2F2A26]/80">
-                                <li v-for="item in hotelActivities" :key="item.id">{{ item.name }} - {{ formatDateTime(item.date_time) }}</li>
-                            </ul>
-                        </div>
-                    </div>
                 </div>
 
                 <div v-else class="bg-white rounded-xl border border-[#2F2A26]/10 shadow-sm overflow-hidden">
@@ -215,6 +207,7 @@ const reservationStatusBadgeClass = (status) => {
                                 <th class="px-4 py-3 text-left text-xs uppercase">Reserva</th>
                                 <th class="px-4 py-3 text-left text-xs uppercase">Plazas</th>
                                 <th class="px-4 py-3 text-left text-xs uppercase">Total</th>
+                                <th class="px-4 py-3 text-left text-xs uppercase">Pago</th>
                                 <th class="px-4 py-3 text-left text-xs uppercase">Estado</th>
                                 <th class="px-4 py-3 text-right text-xs uppercase">Acciones</th>
                             </tr>
@@ -228,6 +221,9 @@ const reservationStatusBadgeClass = (status) => {
                                 </td>
                                 <td class="px-4 py-3 text-sm text-[#2F2A26]/70">{{ reservation.seats_booked }}</td>
                                 <td class="px-4 py-3 text-sm font-bold text-[#A64B35]">{{ formatPrice(reservation.total_price) }}</td>
+                                <td class="px-4 py-3 text-sm text-[#2F2A26]/70">
+                                    {{ paymentMethodLabel(reservation.payment_method, reservation.total_price) }}
+                                </td>
                                 <td class="px-4 py-3">
                                     <span
                                         class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"

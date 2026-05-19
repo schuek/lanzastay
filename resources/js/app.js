@@ -36,7 +36,7 @@ document.documentElement.lang = initialLocale;
 window.__getI18nLocale = () => i18n.global.locale.value;
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    title: (title) => title || appName,
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.vue`,

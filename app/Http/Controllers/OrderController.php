@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Habitacion;
 use App\Models\Order;
+use App\Models\Service;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use App\Events\OrderCreated;
 use App\Support\AmenityRequestType;
@@ -34,7 +37,14 @@ class OrderController extends Controller
             $order->load(['services', 'habitacion']);
 
             if ($order->service_type === 'comida') {
-                broadcast(new OrderCreated($order));
+                try {
+                    broadcast(new OrderCreated($order));
+                } catch (\Throwable $e) {
+                    Log::warning('OrderCreated broadcast failed', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             if ($paidWithCard) {
@@ -52,6 +62,24 @@ class OrderController extends Controller
                 'message' => collect($e->errors())->flatten()->first() ?? 'No se pudo validar el pedido.',
                 'errors' => $e->errors(),
             ], 422);
+        } catch (QueryException $e) {
+            Log::error('Order store database error', [
+                'message' => $e->getMessage(),
+                'sql' => $e->getSql(),
+            ]);
+
+            $message = $this->friendlyDatabaseErrorMessage($e);
+
+            return response()->json(['message' => $message], $message === 'No se pudo registrar el pedido. Inténtalo de nuevo.' ? 500 : 422);
+        } catch (\Throwable $e) {
+            Log::error('Order store failed', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'No se pudo registrar el pedido. Inténtalo de nuevo.',
+            ], 500);
         }
     }
 
@@ -152,6 +180,10 @@ class OrderController extends Controller
                 ]);
             }
 
+            if (! $isRestaurantAmenity) {
+                $this->assertValidFoodCart($validated['cart'] ?? [], (float) ($validated['total'] ?? 0));
+            }
+
             if ($isRestaurantAmenity && ! in_array($description, AmenityRequestType::restaurantCodes(), true)) {
                 throw ValidationException::withMessages([
                     'description' => 'Tipo de amenity no válido.',
@@ -188,11 +220,21 @@ class OrderController extends Controller
             ]);
         }
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($validated, $description) {
             $habitacion = GuestRoomResolver::fromAccessToken(
                 $validated['access_token'],
                 $validated['session_token'],
             );
+
+            $isScheduledRoomCleaning = $validated['service_type'] === 'limpieza'
+                && ! CleaningRequestType::isAmenity($description)
+                && ! AmenityRequestType::isHousekeepingAmenity($description);
+
+            if ($isScheduledRoomCleaning && Order::roomHasScheduledRoomCleaningToday($habitacion->id)) {
+                throw ValidationException::withMessages([
+                    'description' => 'Ya has enviado una petición de limpieza hoy. Podrás solicitar otra mañana.',
+                ]);
+            }
 
             $isRestaurantAmenity = $validated['service_type'] === 'comida'
                 && AmenityRequestType::isRestaurantAmenity($description);
@@ -221,35 +263,169 @@ class OrderController extends Controller
                     : ($validated['requested_time'] ?? null);
             }
 
-            $order = Order::query()->create([
-                'habitacion_id' => $habitacion->id,
-                'room_number' => $habitacion->numero,
-                'session_token' => $habitacion->current_session_token,
-                'guest_email' => $habitacion->guest_email,
-                'service_type' => $validated['service_type'],
-                'requested_time' => $cleaningRequestedTime,
-                'description' => match ($validated['service_type']) {
-                    'mantenimiento' => $description,
-                    'limpieza' => $cleaningDescription,
-                    'comida' => $isRestaurantAmenity ? $description : null,
-                    default => null,
-                },
-                'notas' => $validated['service_type'] === 'comida' ? ($validated['notas'] ?? null) : null,
-                'total_price' => $orderTotal,
-                'status' => $paidWithCard ? 'pagado' : 'recibido',
-            ]);
+            $order = Order::query()->create(
+                $this->buildOrderCreateAttributes(
+                    $habitacion,
+                    $validated,
+                    $description,
+                    $cleaningDescription,
+                    $cleaningRequestedTime,
+                    $isRestaurantAmenity,
+                    $orderTotal,
+                    $paidWithCard,
+                ),
+            );
 
-            if ($validated['service_type'] === 'comida') {
-                foreach ($validated['cart'] as $item) {
-                    $order->services()->attach($item['id'], [
-                        'quantity' => $item['quantity'],
-                        'price' => $item['price'],
-                    ]);
-                }
+            if ($validated['service_type'] === 'comida' && ! $isRestaurantAmenity) {
+                $this->attachCartLines($order, $validated['cart'] ?? []);
             }
 
             return $order;
         });
+    }
+
+    /**
+     * @param  array<int, array{id: int, quantity: int, price: float|int|string}>  $cart
+     */
+    private function assertValidFoodCart(array $cart, float $declaredTotal): void
+    {
+        if ($cart === []) {
+            throw ValidationException::withMessages([
+                'cart' => 'Debes añadir al menos un producto para pedir comida.',
+            ]);
+        }
+
+        $ids = collect($cart)->pluck('id')->map(fn ($id) => (int) $id)->unique()->values();
+        $services = Service::query()
+            ->whereIn('id', $ids)
+            ->get(['id', 'service_type', 'price'])
+            ->keyBy('id');
+
+        if ($services->count() !== $ids->count()) {
+            throw ValidationException::withMessages([
+                'cart' => 'Uno o más productos del carrito ya no están disponibles.',
+            ]);
+        }
+
+        $invalidType = $services->first(fn (Service $service) => $service->service_type !== 'comida');
+        if ($invalidType) {
+            throw ValidationException::withMessages([
+                'cart' => 'El carrito contiene productos que no pertenecen al menú de restaurante.',
+            ]);
+        }
+
+        $computedTotal = round(
+            collect($cart)->sum(function (array $item) use ($services) {
+                $service = $services->get((int) $item['id']);
+
+                return (float) $service->price * (int) $item['quantity'];
+            }),
+            2,
+        );
+        $declared = round($declaredTotal, 2);
+
+        if (abs($computedTotal - $declared) > 0.02) {
+            throw ValidationException::withMessages([
+                'total' => 'El total del pedido no coincide con el menú actual. Recarga la página e inténtalo de nuevo.',
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array{id: int, quantity: int, price: float|int|string}>  $cart
+     */
+    private function attachCartLines(Order $order, array $cart): void
+    {
+        $services = Service::query()
+            ->whereIn('id', collect($cart)->pluck('id'))
+            ->get(['id', 'price'])
+            ->keyBy('id');
+
+        foreach ($cart as $item) {
+            $service = $services->get((int) $item['id']);
+            $order->services()->attach((int) $item['id'], [
+                'quantity' => (int) $item['quantity'],
+                'price' => (float) ($service->price ?? $item['price']),
+            ]);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildOrderCreateAttributes(
+        Habitacion $habitacion,
+        array $validated,
+        ?string $description,
+        ?string $cleaningDescription,
+        ?string $cleaningRequestedTime,
+        bool $isRestaurantAmenity,
+        float $orderTotal,
+        bool $paidWithCard,
+    ): array {
+        $attributes = [
+            'room_number' => $habitacion->numero,
+            'service_type' => $validated['service_type'],
+            'description' => match ($validated['service_type']) {
+                'mantenimiento' => $description,
+                'limpieza' => $cleaningDescription,
+                'comida' => $isRestaurantAmenity ? $description : null,
+                default => null,
+            },
+            'total_price' => $orderTotal,
+            'status' => $paidWithCard ? 'pagado' : 'recibido',
+        ];
+
+        if (Schema::hasColumn('orders', 'habitacion_id')) {
+            $attributes['habitacion_id'] = $habitacion->id;
+        }
+
+        if (Schema::hasColumn('orders', 'session_token')) {
+            $attributes['session_token'] = $habitacion->current_session_token;
+        }
+
+        if (Schema::hasColumn('orders', 'guest_email')) {
+            $attributes['guest_email'] = $habitacion->guest_email;
+        }
+
+        if (Schema::hasColumn('orders', 'requested_time')) {
+            $attributes['requested_time'] = $cleaningRequestedTime;
+        }
+
+        if (Schema::hasColumn('orders', 'notas') && $validated['service_type'] === 'comida') {
+            $attributes['notas'] = $validated['notas'] ?? null;
+        }
+
+        if (Schema::hasColumn('orders', 'prioridad')) {
+            $attributes['prioridad'] = Order::PRIORIDAD_MEDIA;
+        }
+
+        return $attributes;
+    }
+
+    private function friendlyDatabaseErrorMessage(QueryException $e): string
+    {
+        $code = (int) ($e->errorInfo[1] ?? 0);
+
+        if ($code === 1049 || str_contains($e->getMessage(), 'Unknown database')) {
+            return 'El servicio no está disponible temporalmente. Contacta con recepción.';
+        }
+
+        if ($code === 2002 || str_contains($e->getMessage(), 'Connection refused')) {
+            return 'No hay conexión con la base de datos. Inténtalo en unos minutos.';
+        }
+
+        if ($code === 1452 || str_contains($e->getMessage(), 'foreign key constraint')) {
+            return 'Uno de los datos del pedido ya no es válido. Actualiza el menú e inténtalo de nuevo.';
+        }
+
+        if ($code === 1054 || str_contains($e->getMessage(), 'Unknown column')) {
+            Log::critical('Order store: migración pendiente en tabla orders', ['error' => $e->getMessage()]);
+
+            return 'El sistema está en mantenimiento. Contacta con recepción.';
+        }
+
+        return 'No se pudo registrar el pedido. Inténtalo de nuevo.';
     }
 
     //--PARA ADMIN--

@@ -1,15 +1,18 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import {
-    HomeIcon,
-    QrCodeIcon,
-    SparklesIcon,
-    WrenchScrewdriverIcon,
-} from '@heroicons/vue/24/outline';
+import FaIcon from '@/Components/UI/FaIcon.vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const isDepartamentosOpen = ref(false);
 const dropdownRoot = ref(null);
+
+const departmentItems = [
+    { href: () => route('admin.qrcodes'), label: 'Códigos QR', icon: 'qrcode' },
+    { href: () => route('rooms.index'), label: 'Habitaciones', icon: 'door-open' },
+    { href: () => route('admin.service-requests'), label: 'Peticiones Limp. / Mant.', icon: 'clipboard-list' },
+    { href: () => route('tasks.cleaning'), label: 'Tablero limpieza', icon: 'broom' },
+    { href: () => route('tasks.maintenance'), label: 'Tablero mantenimiento', icon: 'screwdriver-wrench' },
+];
 
 const isModulesActive = computed(() => {
     const r = route();
@@ -81,29 +84,22 @@ onUnmounted(() => {
 
         <div
             v-show="isDepartamentosOpen"
-            class="absolute start-0 z-50 mt-2 min-w-[12rem] rounded-lg border border-gray-100 bg-white py-1 shadow-lg"
+            class="absolute start-0 z-50 mt-2 min-w-[14rem] rounded-xl border border-[#2F2A26]/10 bg-white py-1.5 shadow-lg"
             role="menu"
             @click="closeDepartamentos"
         >
-            <DropdownLink :href="route('admin.qrcodes')" class="flex items-center gap-2">
-                <QrCodeIcon class="h-4 w-4 text-purple-600" />
-                Códigos QR
-            </DropdownLink>
-            <DropdownLink :href="route('rooms.index')" class="flex items-center gap-2">
-                <HomeIcon class="h-4 w-4 text-[#A64B35]" />
-                Habitaciones
-            </DropdownLink>
-            <DropdownLink :href="route('admin.service-requests')" class="flex items-center gap-2">
-                <SparklesIcon class="h-4 w-4 text-[#A64B35]" />
-                Peticiones Limp. / Mant.
-            </DropdownLink>
-            <DropdownLink :href="route('tasks.cleaning')" class="flex items-center gap-2">
-                <SparklesIcon class="h-4 w-4 text-violet-600" />
-                Tablero limpieza
-            </DropdownLink>
-            <DropdownLink :href="route('tasks.maintenance')" class="flex items-center gap-2">
-                <WrenchScrewdriverIcon class="h-4 w-4 text-amber-600" />
-                Tablero mantenimiento
+            <DropdownLink
+                v-for="item in departmentItems"
+                :key="item.icon"
+                :href="item.href()"
+                class="flex items-center gap-2.5 !text-[#2F2A26] hover:!bg-[#A64B35]/[0.06]"
+            >
+                <span
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#A64B35]/[0.08]"
+                >
+                    <FaIcon :icon="item.icon" class="text-sm text-[#A64B35]" />
+                </span>
+                <span class="text-sm font-medium leading-snug">{{ item.label }}</span>
             </DropdownLink>
         </div>
     </div>

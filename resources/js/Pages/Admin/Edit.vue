@@ -20,8 +20,8 @@ const form = useForm({
     image_url: props.service.image_url ?? '',
 });
 
-// Enviamos los datos con método PUT (Actualizar)
 const submit = () => {
+    form.service_type = 'comida';
     form.put(route('catalog.update', props.service.id));
 };
 </script>
@@ -78,20 +78,7 @@ const submit = () => {
                             <div v-if="form.errors.price" class="text-red-500 text-sm mt-1">{{ form.errors.price }}</div>
                         </div>
 
-                        <div>
-                            <label class="block font-medium text-sm text-gray-700">Tipo de Servicio</label>
-                            <select
-                                v-model="form.service_type"
-                                class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-[#A64B35] focus:ring-[#A64B35]"
-                            >
-                                <option value="comida">Comida</option>
-                                <option value="limpieza">Limpieza</option>
-                                <option value="mantenimiento">Mantenimiento</option>
-                            </select>
-                            <div v-if="form.errors.service_type" class="text-red-500 text-sm mt-1">{{ form.errors.service_type }}</div>
-                        </div>
-
-                        <div v-if="form.service_type === 'comida'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block font-medium text-sm text-gray-700">Categoría restaurante</label>
                                 <select

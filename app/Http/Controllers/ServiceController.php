@@ -143,7 +143,7 @@ class ServiceController extends Controller
             'image_url' => 'nullable|url|max:2048',
         ]);
 
-        Service::create($this->normalizeServicePayload($this->applyKitchenCatalogConstraints($validated)));
+        Service::create($this->normalizeServicePayload($this->applyCatalogRestaurantConstraints($validated)));
         return to_route('catalog.index');
     }
 
@@ -167,7 +167,7 @@ class ServiceController extends Controller
             'image_url' => 'nullable|url|max:2048',
         ]);
 
-        $service->update($this->normalizeServicePayload($this->applyKitchenCatalogConstraints($validated)));
+        $service->update($this->normalizeServicePayload($this->applyCatalogRestaurantConstraints($validated)));
 
         return to_route('catalog.index');
     }
@@ -216,13 +216,10 @@ class ServiceController extends Controller
 
     private function catalogCategoriesForUser()
     {
-        $query = Category::query()->orderBy('name');
-
-        if ($this->isKitchenCatalogRole()) {
-            $query->where('name', 'Restaurante');
-        }
-
-        return $query->get();
+        return Category::query()
+            ->where('name', 'Restaurante')
+            ->orderBy('name')
+            ->get();
     }
 
     private function assertKitchenCanAccessService(Service $service): void
@@ -232,19 +229,18 @@ class ServiceController extends Controller
         }
     }
 
-    private function applyKitchenCatalogConstraints(array $validated): array
+    private function applyCatalogRestaurantConstraints(array $validated): array
     {
-        if (! $this->isKitchenCatalogRole()) {
-            return $validated;
-        }
-
-        $restaurantCategoryId = Category::query()
-            ->where('name', 'Restaurante')
-            ->value('id');
-
         $validated['service_type'] = 'comida';
-        if ($restaurantCategoryId) {
-            $validated['category_id'] = $restaurantCategoryId;
+
+        if ($this->isKitchenCatalogRole()) {
+            $restaurantCategoryId = Category::query()
+                ->where('name', 'Restaurante')
+                ->value('id');
+
+            if ($restaurantCategoryId) {
+                $validated['category_id'] = $restaurantCategoryId;
+            }
         }
 
         return $validated;
@@ -257,7 +253,10 @@ class ServiceController extends Controller
     $codes = [];
 
     foreach ($rooms as $room) {
-        $url = route('menu.show', $room);
+        $url = $room->generateQrUrl();
+        if ($url === '') {
+            continue;
+        }
         $qr = QrCode::size(220)->margin(1)->generate($url);
 
         $codes[] = [

@@ -304,7 +304,7 @@ const checkOutAndInvoice = () => {
                                                 <button
                                                     v-if="isDisponible(room)"
                                                     type="button"
-                                                    class="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                                                    class="rounded-xl bg-[#A64B35] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#8f3f2e]"
                                                     @click="openCheckInModal(room)"
                                                 >
                                                     Check-in
@@ -323,7 +323,7 @@ const checkOutAndInvoice = () => {
                                                 <button
                                                     v-if="isOcupada(room)"
                                                     type="button"
-                                                    class="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-red-700"
+                                                    class="rounded-xl bg-[#A64B35] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#8f3f2e]"
                                                     @click="openCheckOutModal(room.id)"
                                                 >
                                                     Check-out
@@ -433,7 +433,7 @@ const checkOutAndInvoice = () => {
                         <button
                             type="submit"
                             :disabled="checkInForm.processing"
-                            class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                            class="rounded-xl bg-[#A64B35] px-4 py-2 text-sm font-semibold text-white hover:bg-[#8f3f2e]"
                         >
                             Confirmar check-in
                         </button>
@@ -469,7 +469,7 @@ const checkOutAndInvoice = () => {
                     </a>
                     <button
                         type="button"
-                        class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                        class="rounded-xl bg-[#A64B35] px-4 py-2 text-sm font-semibold text-white hover:bg-[#8f3f2e]"
                         @click="checkOutAndInvoice"
                     >
                         Confirmar check-out

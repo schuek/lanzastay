@@ -30,7 +30,9 @@ import {
 import LanguageSelector from '@/Components/LanguageSelector.vue';
 import { AMENITY_CODES, resolveAmenityFromDescription, serviceTypeForAmenityCode } from '@/constants/amenityRequests';
 import GuestAmenitiesPanel from '@/Components/Guest/GuestAmenitiesPanel.vue';
+import GuestActivityBookingModal from '@/Components/Guest/GuestActivityBookingModal.vue';
 import ChatbotWidget from '@/Components/ChatbotWidget.vue';
+import { activityCapacityLabel, activityPlazasDisponibles } from '@/composables/useActivityCapacity';
 import { useRestaurantCategory } from '@/composables/useRestaurantCategory';
 import { useTourismPlace } from '@/composables/useTourismPlace';
 import { Swiper, SwiperSlide } from 'swiper/vue';
@@ -41,12 +43,8 @@ const tourismSwiperBreakpoints = {
         slidesPerView: 1.5,
         spaceBetween: 16,
     },
-    768: {
+    1280: {
         slidesPerView: 3,
-        spaceBetween: 24,
-    },
-    1024: {
-        slidesPerView: 4,
         spaceBetween: 24,
     },
 };
@@ -71,6 +69,8 @@ const cart = ref([]);
 const isCartOpen = ref(false);
 const requestedTime = ref('');
 const submittingAmenityCode = ref(null);
+const confirmedAmenityCode = ref(null);
+const submittingRoomCleaning = ref(false);
 const maintenanceDescription = ref('');
 const reactiveReservations = ref([...(props.myReservations ?? [])]);
 const paymentMethod = ref('room');
@@ -79,13 +79,11 @@ const showReservationSuccess = ref(false);
 let pollingInterval = null;
 const orderStatusSnapshot = ref({});
 
-const selectedActivity = ref(null);
-const isActivityModalOpen = ref(false);
-const isBookingModalOpen = ref(false);
+const selectedActivityBooking = ref(null);
+const isActivityBookingModalOpen = ref(false);
 const bookingSeats = ref(1);
-const selectedActividadReserva = ref(null);
-const isReservaModalOpen = ref(false);
-const cantidadReserva = ref(1);
+const bookingScheduledTime = ref('');
+const submittingActivityBooking = ref(false);
 const restaurantFilter = ref('comida');
 const selectedMenuItem = ref(null);
 const isMenuItemModalOpen = ref(false);
@@ -96,6 +94,7 @@ const mostrarModalComida = ref(false);
 const comidaSeleccionada = ref(null);
 const cantidadComida = ref(1);
 const metodoPago = ref('habitacion');
+const activityPaymentMethod = ref('efectivo');
 const cargando = ref(false);
 const notasPedido = ref('');
 const page = usePage();
@@ -110,6 +109,7 @@ const { tourismDescription } = useTourismPlace();
 
 let stripeInstance = null;
 let cardElement = null;
+let activeStripeMountId = null;
 let stripeLoadPromise = null;
 let stripeMountGeneration = 0;
 
@@ -175,11 +175,16 @@ const busTours = computed(() => (props.activities ?? []).filter((activity) => ac
 const hotelActivitiesGeneral = computed(() => (props.activities ?? []).filter(
     (activity) => activity.type === 'hotel_activity' && !String(activity.description ?? '').startsWith('[niños]'),
 ));
-const bookingTotal = computed(() => Number((selectedActivity.value?.price ?? 0) * bookingSeats.value));
-const precioTotalReserva = computed(() => Number((selectedActividadReserva.value?.price ?? 0) * cantidadReserva.value));
 const precioTotalModalComida = computed(() => Number((comidaSeleccionada.value?.price ?? 0) * cantidadComida.value));
 
 const formatPrice = (value) => new Intl.NumberFormat(locale.value === 'en' ? 'en-GB' : 'es-ES', { style: 'currency', currency: 'EUR' }).format(value || 0);
+
+const serviceImageSrc = (service) => {
+    const url = (service?.image_url ?? '').trim();
+    if (!url) return null;
+    if (/^(https?:|data:)/i.test(url)) return url;
+    return url.startsWith('/') ? url : `/${url}`;
+};
 const formatDateTime = (value) => {
     if (value == null || value === '') return '—';
     const d = new Date(value);
@@ -194,31 +199,85 @@ const activityDateYmd = (activity) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+const hasRoomCleaningToday = computed(() => {
+    const todayKey = new Date().toDateString();
+    return (props.myOrders ?? []).some((order) => {
+        if (order.service_type !== 'limpieza' || order.description !== AMENITY_CODES.ROOM) {
+            return false;
+        }
+        const created = new Date(order.created_at);
+        return !Number.isNaN(created.getTime()) && created.toDateString() === todayKey;
+    });
+});
+
+const orderRequestErrorMessage = (error, fallbackKey) => {
+    const data = error?.response?.data;
+    if (data?.message) {
+        return data.message;
+    }
+    const errors = data?.errors;
+    if (errors && typeof errors === 'object') {
+        const first = Object.values(errors).flat().find(Boolean);
+        if (first) {
+            return first;
+        }
+    }
+    if (error?.response?.status >= 500) {
+        return t('notifications.error_servidor');
+    }
+    return t(fallbackKey);
+};
+
 const guestRoomPayload = () => ({
     access_token: props.roomAccessToken,
     session_token: props.sessionToken,
 });
 
-const plazasDisponibles = (activity) => {
-    const disponibles = activity?.plazas_disponibles ?? activity?.max_seats ?? 0;
-    return Math.max(0, Number(disponibles));
-};
+const plazasDisponibles = (activity) => activityPlazasDisponibles(activity) ?? 0;
 
-const buildReservationPayload = (activity, seats, type) => {
+const capacityLabelForCard = (activity) => activityCapacityLabel(activity, t);
+
+const activityTotalPrice = (activity, seats) =>
+    Number((activity?.price ?? 0) * seats);
+
+const buildReservationPayload = (activity, seats, type, scheduledTime, extras = {}) => {
     const date = activityDateYmd(activity);
+    const total = activityTotalPrice(activity, seats);
+
     return {
         ...guestRoomPayload(),
         activity_id: activity.id,
         plazas: seats,
         guests: seats,
         seats_booked: seats,
+        scheduled_time: scheduledTime,
+        hora: scheduledTime,
         type,
+        ...(total > 0 ? { payment_method: extras.payment_method ?? 'efectivo' } : {}),
+        ...(extras.stripe_token ? { stripe_token: extras.stripe_token } : {}),
         ...(date ? { date } : {}),
     };
 };
 
-const postReservation = (activity, seats, type) => axios.post('/api/reservations', buildReservationPayload(activity, seats, type));
+const postReservation = (activity, seats, type, scheduledTime, extras = {}) =>
+    axios.post(
+        '/api/reservations',
+        buildReservationPayload(activity, seats, type, scheduledTime, extras),
+        { headers: { Accept: 'application/json' } },
+    );
 const formatReservationType = (type) => (type === 'bus_tour' ? t('profile.tipo_bus') : t('profile.tipo_actividad'));
+const formatReservationPayment = (reservation) => {
+    if (Number(reservation?.total_price ?? 0) <= 0) {
+        return t('profile.pago_gratis');
+    }
+    if (reservation?.payment_method === 'tarjeta') {
+        return t('profile.pago_tarjeta');
+    }
+    if (reservation?.payment_method === 'efectivo') {
+        return t('profile.pago_efectivo');
+    }
+    return '';
+};
 const statusLabel = (status) => t(`profile.status.${status}`, status);
 const orderStatusBadgeClass = (status) => {
     if (status === 'completado') {
@@ -267,7 +326,11 @@ const menuHistoryState = (tab, category = null) => ({
 const applyMenuHistoryState = (state) => {
     const tab = state?.tab ?? 'home';
     currentTab.value = tab;
-    selectedServiceCategory.value = tab === 'services' ? (state?.category ?? null) : null;
+    const category = tab === 'services' ? (state?.category ?? null) : null;
+    if (category !== 'limpieza') {
+        confirmedAmenityCode.value = null;
+    }
+    selectedServiceCategory.value = category;
 };
 
 const pushMenuHistory = (tab, category = null) => {
@@ -398,16 +461,17 @@ const unmountStripeCard = () => {
         }
         cardElement = null;
     }
+    activeStripeMountId = null;
     stripeCardReady.value = false;
     stripeCardError.value = '';
     stripeCardLoading.value = false;
     stripeUnavailable.value = false;
 };
 
-const waitForCardMountTarget = async (maxAttempts = 12) => {
+const waitForCardMountTarget = async (targetId, maxAttempts = 12) => {
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         await nextTick();
-        const mountTarget = document.getElementById('card-element');
+        const mountTarget = document.getElementById(targetId);
         if (mountTarget) {
             return mountTarget;
         }
@@ -418,7 +482,7 @@ const waitForCardMountTarget = async (maxAttempts = 12) => {
     return null;
 };
 
-const mountStripeCard = async () => {
+const mountStripeCard = async (targetId = 'card-element') => {
     const generation = stripeMountGeneration + 1;
     stripeMountGeneration = generation;
 
@@ -434,7 +498,7 @@ const mountStripeCard = async () => {
             return;
         }
 
-        const mountTarget = await waitForCardMountTarget();
+        const mountTarget = await waitForCardMountTarget(targetId);
         if (generation !== stripeMountGeneration) {
             return;
         }
@@ -444,9 +508,14 @@ const mountStripeCard = async () => {
             return;
         }
 
-        if (cardElement) {
+        if (cardElement && activeStripeMountId === targetId) {
             stripeCardReady.value = true;
             return;
+        }
+
+        if (cardElement) {
+            unmountStripeCard();
+            stripeMountGeneration = generation;
         }
 
         stripeInstance = await promise;
@@ -478,6 +547,7 @@ const mountStripeCard = async () => {
         });
 
         cardElement.mount(mountTarget);
+        activeStripeMountId = targetId;
         stripeCardReady.value = true;
     } catch (error) {
         console.error('[Stripe] mount failed', error);
@@ -497,8 +567,20 @@ watch(
     () => [metodoPago.value, mostrarModalComida.value],
     async ([metodo, modalOpen]) => {
         if (metodo === 'tarjeta' && modalOpen) {
-            await mountStripeCard();
-        } else if (metodo !== 'tarjeta') {
+            await mountStripeCard('card-element');
+        } else if (!isActivityBookingModalOpen.value || activityPaymentMethod.value !== 'tarjeta') {
+            unmountStripeCard();
+        }
+    },
+    { flush: 'post' },
+);
+
+watch(
+    () => [activityPaymentMethod.value, isActivityBookingModalOpen.value],
+    async ([metodo, modalOpen]) => {
+        if (metodo === 'tarjeta' && modalOpen) {
+            await mountStripeCard('activity-card-element');
+        } else if (!mostrarModalComida.value || metodoPago.value !== 'tarjeta') {
             unmountStripeCard();
         }
     },
@@ -547,6 +629,7 @@ const enviarPedidoComida = (payload) => {
         resetearModalComida();
         showNotification(response.data?.message ?? t('notifications.pedido_confirmado'), 'success');
         fetchMyOrders();
+        cargando.value = false;
     }).catch((error) => {
         const message = error.response?.data?.message
             ?? error.response?.data?.errors?.stripe_token?.[0]
@@ -626,7 +709,7 @@ const submitOrder = () => {
         isCartOpen.value = false;
         showNotification(t('notifications.comida_enviada'), 'success');
         fetchMyOrders();
-    }).catch(() => showNotification(t('notifications.error_enviar_pedido'), 'error'));
+    }).catch((error) => showNotification(orderRequestErrorMessage(error, 'notifications.error_enviar_pedido'), 'error'));
 };
 
 const submitAmenity = (item) => {
@@ -640,17 +723,23 @@ const submitAmenity = (item) => {
             description: item.code,
         })
         .then(() => {
+            confirmedAmenityCode.value = item.code;
             showNotification(t('notifications.amenity_enviada'), 'success');
             fetchMyOrders();
         })
-        .catch(() => showNotification(t('notifications.error_enviar_solicitud'), 'error'))
+        .catch((error) => showNotification(orderRequestErrorMessage(error, 'notifications.error_enviar_solicitud'), 'error'))
         .finally(() => {
             submittingAmenityCode.value = null;
         });
 };
 
 const submitRoomCleaningRequest = () => {
+    if (hasRoomCleaningToday.value) {
+        return showNotification(t('amenities.daily_limit'), 'error');
+    }
     if (!requestedTime.value) return showNotification(t('notifications.selecciona_hora_limpieza'), 'error');
+    if (submittingRoomCleaning.value) return;
+    submittingRoomCleaning.value = true;
     axios
         .post('/api/orders', {
             ...guestRoomPayload(),
@@ -663,7 +752,10 @@ const submitRoomCleaningRequest = () => {
             showNotification(t('notifications.limpieza_enviada'), 'success');
             fetchMyOrders();
         })
-        .catch(() => showNotification(t('notifications.error_enviar_solicitud'), 'error'));
+        .catch((error) => showNotification(orderRequestErrorMessage(error, 'notifications.error_enviar_solicitud'), 'error'))
+        .finally(() => {
+            submittingRoomCleaning.value = false;
+        });
 };
 
 const submitMaintenanceRequest = () => {
@@ -675,61 +767,136 @@ const submitMaintenanceRequest = () => {
     }).then(() => {
         maintenanceDescription.value = '';
         showNotification(t('notifications.mantenimiento_enviado'), 'success');
-    }).catch(() => showNotification(t('notifications.error_enviar_reporte'), 'error'));
+    }).catch((error) => showNotification(orderRequestErrorMessage(error, 'notifications.error_enviar_reporte'), 'error'));
 };
 
-const openActivityModal = (activity) => {
-    selectedActivity.value = activity;
-    isActivityModalOpen.value = true;
-};
-const startReservation = (activity) => {
-    selectedActivity.value = activity;
+const openActivityBookingModal = (activity) => {
+    if (!activity?.id) return;
+    selectedActivityBooking.value = activity;
     bookingSeats.value = 1;
-    isActivityModalOpen.value = false;
-    isBookingModalOpen.value = true;
-};
-const confirmReservation = () => {
-    if (!selectedActivity.value) return;
-    postReservation(selectedActivity.value, bookingSeats.value, 'bus_tour').then((response) => {
-        if (response.data?.reservation) reactiveReservations.value.unshift(response.data.reservation);
-        bookingSeats.value = 1;
-        selectedActivity.value = null;
-        isBookingModalOpen.value = false;
-        showReservationSuccess.value = true;
-        setTimeout(() => { showReservationSuccess.value = false; }, 1800);
-        showNotification(t('notifications.reserva_recepcion'), 'success');
-    }).catch((error) => {
-        const errs = error?.response?.data?.errors ?? {};
-        const message = errs.plazas?.[0] ?? errs.seats_booked?.[0] ?? error?.response?.data?.message ?? errs.date?.[0] ?? errs.type?.[0] ?? t('notifications.error_reserva');
-        showNotification(message, 'error');
-    });
+    bookingScheduledTime.value = '';
+    activityPaymentMethod.value = 'efectivo';
+    isActivityBookingModalOpen.value = true;
 };
 
-const openReservaModal = (actividad) => {
-    selectedActividadReserva.value = actividad;
-    cantidadReserva.value = 1;
-    isReservaModalOpen.value = true;
+const reservarTourExcursion = async (tour, event) => {
+    event?.stopPropagation?.();
+    event?.preventDefault?.();
+    if (mostrarModalTurismo.value) {
+        cerrarModalTurismo();
+        await nextTick();
+    }
+    openActivityBookingModal(tour);
 };
-const adjustCantidadReserva = () => {
-    const maxPlazas = plazasDisponibles(selectedActividadReserva.value) || 1;
-    if (cantidadReserva.value < 1) cantidadReserva.value = 1;
-    if (cantidadReserva.value > maxPlazas) cantidadReserva.value = maxPlazas;
+
+const reservarDesdeModalTurismo = async () => {
+    const tour = sitioSeleccionado.value;
+    cerrarModalTurismo();
+    await nextTick();
+    if (tour) openActivityBookingModal(tour);
 };
-const confirmarReservaActividad = () => {
-    if (!selectedActividadReserva.value) return;
-    postReservation(selectedActividadReserva.value, cantidadReserva.value, 'hotel_activity').then((response) => {
-        if (response.data?.reservation) reactiveReservations.value.unshift(response.data.reservation);
-        cantidadReserva.value = 1;
-        selectedActividadReserva.value = null;
-        isReservaModalOpen.value = false;
-        showReservationSuccess.value = true;
-        setTimeout(() => { showReservationSuccess.value = false; }, 1800);
-        showNotification(t('notifications.reserva_ok'), 'success');
-    }).catch((error) => {
-        const errs = error?.response?.data?.errors ?? {};
-        const message = errs.plazas?.[0] ?? errs.seats_booked?.[0] ?? error?.response?.data?.message ?? errs.date?.[0] ?? errs.type?.[0] ?? t('notifications.error_reserva');
-        showNotification(message, 'error');
-    });
+
+const closeActivityBookingModal = () => {
+    if (activityPaymentMethod.value === 'tarjeta') {
+        unmountStripeCard();
+    }
+    isActivityBookingModalOpen.value = false;
+    selectedActivityBooking.value = null;
+    bookingSeats.value = 1;
+    bookingScheduledTime.value = '';
+    activityPaymentMethod.value = 'efectivo';
+};
+
+const reservationErrorMessage = (error) => {
+    const data = error?.response?.data;
+    if (data?.message) {
+        return data.message;
+    }
+    const errs = data?.errors ?? {};
+    const first = Object.values(errs).flat().find(Boolean);
+    if (first) {
+        return first;
+    }
+    if (error?.response?.status >= 500) {
+        return t('notifications.error_servidor');
+    }
+    return t('notifications.error_reserva');
+};
+
+const submitActivityReservation = (extras = {}) => {
+    const activity = selectedActivityBooking.value;
+    if (!activity) return;
+
+    const type = activity.type === 'bus_tour' ? 'bus_tour' : 'hotel_activity';
+
+    postReservation(activity, bookingSeats.value, type, bookingScheduledTime.value, extras)
+        .then((response) => {
+            if (response.data?.success === false) {
+                showNotification(response.data?.message ?? t('notifications.error_reserva'), 'error');
+                return;
+            }
+            if (response.data?.reservation) reactiveReservations.value.unshift(response.data.reservation);
+            closeActivityBookingModal();
+            showReservationSuccess.value = true;
+            setTimeout(() => { showReservationSuccess.value = false; }, 1800);
+            const paidWithCard = extras.payment_method === 'tarjeta';
+            showNotification(
+                paidWithCard ? t('notifications.reserva_pagada_tarjeta') : t('notifications.reserva_pendiente'),
+                'success',
+            );
+        })
+        .catch((error) => {
+            showNotification(reservationErrorMessage(error), 'error');
+        })
+        .finally(() => {
+            submittingActivityBooking.value = false;
+        });
+};
+
+const confirmActivityBooking = async () => {
+    const activity = selectedActivityBooking.value;
+    if (!activity || submittingActivityBooking.value) return;
+
+    if (!String(bookingScheduledTime.value ?? '').trim()) {
+        showNotification(t('activities.selecciona_hora_obligatorio'), 'error');
+        return;
+    }
+
+    const total = activityTotalPrice(activity, bookingSeats.value);
+    const paymentExtras = total > 0
+        ? { payment_method: activityPaymentMethod.value || 'efectivo' }
+        : { payment_method: null };
+
+    submittingActivityBooking.value = true;
+
+    if (total > 0 && activityPaymentMethod.value === 'tarjeta') {
+        try {
+            if (!stripeInstance || !cardElement || !stripeCardReady.value || activeStripeMountId !== 'activity-card-element') {
+                await mountStripeCard('activity-card-element');
+            }
+            if (!stripeInstance || !cardElement || stripeUnavailable.value) {
+                showNotification(stripeCardError.value || t('notifications.introduce_tarjeta'), 'error');
+                submittingActivityBooking.value = false;
+                return;
+            }
+
+            const { token, error } = await stripeInstance.createToken(cardElement);
+            if (error) {
+                showNotification(error.message ?? t('notifications.tarjeta_invalida'), 'error');
+                submittingActivityBooking.value = false;
+                return;
+            }
+
+            submitActivityReservation({ ...paymentExtras, stripe_token: token.id });
+        } catch (error) {
+            console.error('[Stripe] activity tokenization failed', error);
+            showNotification(error?.message ?? t('notifications.tarjeta_invalida'), 'error');
+            submittingActivityBooking.value = false;
+        }
+        return;
+    }
+
+    submitActivityReservation(paymentExtras);
 };
 
 onMounted(() => {
@@ -755,7 +922,7 @@ onUnmounted(() => {
 <template>
     <Head :title="$t('app.title')" />
 
-    <div class="relative mx-auto min-h-screen w-full max-w-md bg-[#FAFAFA] md:max-w-3xl lg:max-w-5xl">
+    <div class="relative mx-auto min-h-screen w-full max-w-md bg-[#FAFAFA]">
         <Transition
             enter-active-class="transform ease-out duration-300 transition"
             enter-from-class="translate-y-2 opacity-0"
@@ -774,7 +941,7 @@ onUnmounted(() => {
         </Transition>
 
         <header class="fixed top-0 inset-x-0 z-50 flex justify-center border-b border-[#2F2A26]/10 bg-white/95 backdrop-blur">
-            <div class="mx-auto flex w-full max-w-md items-center justify-between px-4 py-3 md:max-w-3xl md:px-6 lg:max-w-5xl lg:px-8">
+            <div class="mx-auto flex w-full max-w-md items-center justify-between px-4 py-3">
                 <div>
                     <p class="text-base font-bold text-[#2F2A26] leading-none">LANZA<span class="text-[#A64B35]">STAY</span></p>
                     <p class="text-xs text-[#2F2A26]/60 mt-1">{{ $t('menu.habitacion', { num: currentRoom }) }}</p>
@@ -801,26 +968,26 @@ onUnmounted(() => {
             </div>
         </header>
 
-        <main class="space-y-4 px-4 pb-32 pt-20 md:px-6 lg:px-8">
-            <section v-if="currentTab === 'home'" class="space-y-4 md:space-y-6">
-                <div class="flex flex-col gap-4 md:flex-row">
-                <button type="button" @click="changeTab('services')" class="relative h-28 w-full overflow-hidden rounded-2xl bg-[url('/images/servicios.avif')] bg-cover bg-center text-white sm:h-32 md:min-h-[8.5rem] md:flex-1">
+        <main class="space-y-4 px-4 pb-32 pt-20">
+            <section v-if="currentTab === 'home'" class="space-y-4">
+                <div class="flex flex-col gap-4">
+                <button type="button" @click="changeTab('services')" class="relative h-28 w-full overflow-hidden rounded-2xl bg-[url('/images/servicios.avif')] bg-cover bg-center text-white sm:h-32">
                     <div class="absolute inset-0 flex h-full w-full flex-col items-center justify-center bg-black/45 p-3 text-center">
-                        <p class="text-xs uppercase tracking-wide text-white/80 sm:text-sm md:text-base">{{ $t('menu.explora') }}</p>
-                        <p class="mt-1 text-base font-semibold sm:text-lg md:text-xl">{{ $t('menu.servicios') }}</p>
+                        <p class="text-xs uppercase tracking-wide text-white/80 sm:text-sm lg:text-base">{{ $t('menu.explora') }}</p>
+                        <p class="mt-1 text-base font-semibold sm:text-lg lg:text-xl">{{ $t('menu.servicios') }}</p>
                     </div>
                 </button>
 
-                <button type="button" @click="changeTab('activities')" class="relative h-28 w-full overflow-hidden rounded-2xl bg-[url('/images/actividades.avif')] bg-cover bg-center text-white sm:h-32 md:min-h-[8.5rem] md:flex-1">
+                <button type="button" @click="changeTab('activities')" class="relative h-28 w-full overflow-hidden rounded-2xl bg-[url('/images/actividades.avif')] bg-cover bg-center text-white sm:h-32">
                     <div class="absolute inset-0 flex h-full w-full flex-col items-center justify-center bg-black/45 p-3 text-center">
-                        <p class="text-xs uppercase tracking-wide text-white/80 sm:text-sm md:text-base">{{ $t('menu.descubre') }}</p>
-                        <p class="mt-1 text-base font-semibold sm:text-lg md:text-xl">{{ $t('menu.actividades') }}</p>
+                        <p class="text-xs uppercase tracking-wide text-white/80 sm:text-sm lg:text-base">{{ $t('menu.descubre') }}</p>
+                        <p class="mt-1 text-base font-semibold sm:text-lg lg:text-xl">{{ $t('menu.actividades') }}</p>
                     </div>
                 </button>
                 </div>
 
                 <section>
-                    <h2 class="mb-3 text-sm font-semibold text-[#2F2A26] md:text-base">{{ $t('menu.turismo') }}</h2>
+                    <h2 class="mb-3 text-sm font-semibold text-[#2F2A26] lg:text-base">{{ $t('menu.turismo') }}</h2>
                     <Swiper
                         :breakpoints="tourismSwiperBreakpoints"
                         :grab-cursor="true"
@@ -833,31 +1000,40 @@ onUnmounted(() => {
                             class="!h-auto"
                         >
                             <article
-                                class="flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-[#2F2A26]/10 bg-white"
+                                class="flex h-full flex-col overflow-hidden rounded-xl border border-[#2F2A26]/10 bg-white"
+                            >
+                            <button
+                                type="button"
+                                class="block w-full cursor-pointer text-left"
                                 @click="abrirModalTurismo(tour)"
                             >
-                            <img
-                                :src="tour.image_url || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=80&fm=avif'"
-                                :alt="tour.name"
-                                class="aspect-[4/3] w-full shrink-0 rounded-t-xl object-cover"
-                            />
-                            <div class="flex flex-1 flex-col p-3 sm:p-4">
-                                <p class="line-clamp-2 text-sm font-semibold leading-snug text-[#2F2A26] sm:text-base">{{ tour.name || $t('menu.excursion') }}</p>
-                                <div class="mt-2 flex items-center gap-1.5">
+                                <img
+                                    :src="tour.image_url || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=80&fm=avif'"
+                                    :alt="tour.name"
+                                    class="aspect-[4/3] w-full shrink-0 rounded-t-xl object-cover"
+                                />
+                                <p class="line-clamp-2 px-3 pt-3 text-sm font-semibold leading-snug text-[#2F2A26] sm:px-4 sm:text-base">
+                                    {{ tour.name || $t('menu.excursion') }}
+                                </p>
+                            </button>
+                            <div class="swiper-no-swiping mt-2 flex items-center gap-1.5 px-3 pb-3 sm:px-4 sm:pb-4">
                                     <a
                                         :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((tour.name || 'Lanzarote') + ' Lanzarote')}`"
                                         target="_blank"
+                                        rel="noopener noreferrer"
                                         class="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-[#2F2A26]/20 py-1.5 text-[10px] text-[#2F2A26]"
-                                        @click.stop
                                     >
                                         <MapPin class="h-3 w-3 shrink-0" />
                                         {{ $t('menu.como_llegar') }}
                                     </a>
-                                    <button type="button" class="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-[#A64B35] py-1.5 text-[10px] text-white" @click.stop="openActivityModal(tour)">
+                                    <button
+                                        type="button"
+                                        class="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-[#A64B35] py-1.5 text-[10px] font-semibold text-white"
+                                        @click="reservarTourExcursion(tour, $event)"
+                                    >
                                         <Ticket class="h-3 w-3 shrink-0" />
                                         {{ $t('menu.reservar') }}
                                     </button>
-                                </div>
                             </div>
                             </article>
                         </SwiperSlide>
@@ -894,9 +1070,16 @@ onUnmounted(() => {
                     <article
                         v-for="service in filteredRestaurantServices"
                         :key="service.id"
-                        class="min-w-0 cursor-pointer rounded-xl border border-[#2F2A26]/10 bg-white p-3 sm:p-4"
+                        class="min-w-0 cursor-pointer overflow-hidden rounded-xl border border-[#2F2A26]/10 bg-white"
                         @click="abrirModalComida(service)"
                     >
+                        <img
+                            v-if="serviceImageSrc(service)"
+                            :src="serviceImageSrc(service)"
+                            :alt="service.name"
+                            class="h-36 w-full object-cover sm:h-40"
+                        />
+                        <div class="p-3 sm:p-4">
                         <div class="flex min-w-0 items-start justify-between gap-2">
                             <div class="min-w-0 flex-1">
                                 <div class="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -929,39 +1112,26 @@ onUnmounted(() => {
                             <button type="button" class="rounded-md border border-[#2F2A26]/20 px-2.5 py-1 text-xs text-[#2F2A26]" @click.stop="openMenuItemModal(service)">{{ $t('services.detalles') }}</button>
                             <button type="button" class="rounded-md bg-[#A64B35] text-white px-2.5 py-1 text-xs" @click.stop="abrirModalComida(service)">{{ $t('services.anadir') }}</button>
                         </div>
+                        </div>
                     </article>
-                    <div v-if="filteredRestaurantServices.length === 0" class="rounded-xl border border-[#2F2A26]/10 bg-white p-3 sm:p-4 md:p-6 text-xs sm:text-sm text-[#2F2A26]/65">
+                    <div v-if="filteredRestaurantServices.length === 0" class="rounded-xl border border-[#2F2A26]/10 bg-white p-3 sm:p-4 lg:p-6 text-xs sm:text-sm text-[#2F2A26]/65">
                         {{ $t('services.sin_productos') }}
                     </div>
                 </div>
 
-                <div v-if="selectedServiceCategory === 'limpieza'" class="space-y-4">
+                <div v-if="selectedServiceCategory === 'limpieza'">
                     <GuestAmenitiesPanel
+                        v-model:requested-time="requestedTime"
                         :submitting-code="submittingAmenityCode"
+                        :confirmed-code="confirmedAmenityCode"
+                        :submitting-room="submittingRoomCleaning"
+                        :room-cleaning-limit-reached="hasRoomCleaningToday"
                         @submit="submitAmenity"
+                        @submit-room="submitRoomCleaningRequest"
                     />
-                    <div class="rounded-xl border border-[#2F2A26]/8 border-t-2 border-t-[#A64B35] bg-white p-4 shadow-sm">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-[#2F2A26]">
-                            {{ $t('cleaning.room_section') }}
-                        </p>
-                        <select
-                            v-model="requestedTime"
-                            class="mt-2 w-full rounded-lg border border-[#2F2A26]/12 px-3 py-2 text-sm text-[#2F2A26]"
-                        >
-                            <option value="">{{ $t('services.selecciona_hora') }}</option>
-                            <option v-for="hour in availableHours" :key="hour" :value="hour">{{ hour }}</option>
-                        </select>
-                        <button
-                            type="button"
-                            class="mt-3 w-full rounded-lg border border-[#2F2A26]/15 bg-white py-2.5 text-sm font-semibold text-[#2F2A26] shadow-sm hover:shadow-md"
-                            @click="submitRoomCleaningRequest"
-                        >
-                            {{ $t('cleaning.request_room_cleaning') }}
-                        </button>
-                    </div>
                 </div>
 
-                <div v-if="selectedServiceCategory === 'mantenimiento'" class="rounded-xl border border-[#2F2A26]/10 bg-white p-3 sm:p-4 md:p-6 space-y-2">
+                <div v-if="selectedServiceCategory === 'mantenimiento'" class="rounded-xl border border-[#2F2A26]/10 bg-white p-3 sm:p-4 lg:p-6 space-y-2">
                     <textarea v-model="maintenanceDescription" rows="3" class="w-full rounded-lg border-[#2F2A26]/15 text-sm" :placeholder="$t('services.describe_problema')"></textarea>
                     <button @click="submitMaintenanceRequest" class="w-full rounded-lg bg-[#A64B35] text-white py-2 text-sm">{{ $t('services.enviar_reporte') }}</button>
                 </div>
@@ -971,19 +1141,23 @@ onUnmounted(() => {
                 <div v-if="hotelActivitiesGeneral.length === 0" class="rounded-xl border border-[#2F2A26]/10 bg-white p-4 text-xs text-[#2F2A26]/70">
                     {{ $t('activities.sin_disponibles') }}
                 </div>
-                <article v-for="activity in hotelActivitiesGeneral" :key="activity.id" class="rounded-xl border border-[#2F2A26]/10 bg-white overflow-hidden">
-                    <img :src="activity.image_url || '/images/spa.avif'" :alt="activity.name" class="h-32 w-full shrink-0 object-cover rounded-t-xl sm:h-40 md:h-48">
-                    <div class="p-3 sm:p-4 md:p-6">
-                        <p class="text-base sm:text-lg md:text-xl font-semibold text-[#2F2A26]">{{ activity.name }}</p>
-                        <p class="text-xs sm:text-sm md:text-base text-[#2F2A26]/65 mt-1">{{ String(activity.description ?? '').replace(/^\[niños\]\s*/i, '') }}</p>
-                        <div class="mt-2 space-y-1 text-xs sm:text-sm text-[#2F2A26]/70">
-                            <p class="inline-flex items-center gap-1"><Clock3 class="w-3.5 h-3.5 text-[#A64B35]" /> {{ formatDateTime(activity.date_time) }}</p>
-                            <p class="inline-flex items-center gap-1 ml-3"><Euro class="w-3.5 h-3.5 text-[#A64B35]" /> {{ Number(activity.price) === 0 ? $t('activities.gratis') : formatPrice(activity.price) }}</p>
-                            <p class="inline-flex items-center gap-1 ml-3"><Users class="w-3.5 h-3.5 text-[#A64B35]" /> {{ $t('activities.plazas', { n: plazasDisponibles(activity) }) }}</p>
+                <article
+                    v-for="activity in hotelActivitiesGeneral"
+                    :key="activity.id"
+                    class="cursor-pointer overflow-hidden rounded-xl border border-[#2F2A26]/10 bg-white transition hover:border-[#A64B35]/40"
+                    @click="openActivityBookingModal(activity)"
+                >
+                    <img :src="activity.image_url || '/images/spa.avif'" :alt="activity.name" class="h-32 w-full shrink-0 object-cover rounded-t-xl sm:h-40 lg:h-48">
+                    <div class="p-3 sm:p-4 lg:p-6">
+                        <p class="text-base font-semibold text-[#2F2A26] sm:text-lg lg:text-xl">{{ activity.name }}</p>
+                        <p class="mt-1 line-clamp-2 text-xs text-[#2F2A26]/65 sm:text-sm lg:text-base">
+                            {{ String(activity.description ?? '').replace(/^\[niños\]\s*/i, '').replace(/\[duracion:\d+\]\s*/i, '') }}
+                        </p>
+                        <div class="mt-2 flex flex-wrap gap-2 text-xs text-[#2F2A26]/70 sm:text-sm">
+                            <p class="inline-flex items-center gap-1"><Euro class="h-3.5 w-3.5 text-[#A64B35]" /> {{ Number(activity.price) === 0 ? $t('activities.gratis') : formatPrice(activity.price) }}</p>
+                            <p class="inline-flex items-center gap-1"><Users class="h-3.5 w-3.5 text-[#A64B35]" /> {{ capacityLabelForCard(activity) }}</p>
                         </div>
-                        <button @click="openReservaModal(activity)" class="mt-3 w-full rounded-lg bg-[#A64B35] text-white py-2 text-sm">
-                            {{ $t('actions.book') }}
-                        </button>
+                        <p class="mt-3 text-center text-xs font-semibold text-[#A64B35]">{{ $t('activities.ver_detalle_reservar') }}</p>
                     </div>
                 </article>
             </section>
@@ -1065,15 +1239,20 @@ onUnmounted(() => {
                             <p class="text-sm font-semibold text-[#2F2A26]">{{ reservation.activity?.name }}</p>
                             <span class="text-[10px] px-2 py-1 rounded-full bg-[#A64B35]/10 text-[#A64B35]">{{ statusLabel(reservation.status) }}</span>
                         </div>
-                        <p class="text-xs text-[#2F2A26]/65 mt-1">{{ formatReservationType(reservation.activity?.type) }} · {{ formatDateTime(reservation.activity?.date_time) }}</p>
+                        <p class="text-xs text-[#2F2A26]/65 mt-1">
+                            {{ formatReservationType(reservation.activity?.type) }}
+                            <span v-if="reservation.scheduled_time"> · {{ reservation.scheduled_time }}</span>
+                            · {{ formatDateTime(reservation.activity?.date_time) }}
+                        </p>
                         <p class="text-xs text-[#2F2A26]/55 mt-0.5">{{ $t('profile.plazas_reserva', { seats: reservation.seats_booked, price: formatPrice(reservation.total_price) }) }}</p>
+                        <p v-if="formatReservationPayment(reservation)" class="text-xs text-[#2F2A26]/55 mt-0.5">{{ formatReservationPayment(reservation) }}</p>
                     </article>
                 </div>
             </section>
         </main>
 
-        <div class="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:px-6 lg:px-8">
-            <nav class="mx-auto flex h-16 w-full max-w-md items-center justify-between rounded-t-2xl border border-b-0 border-[#2F2A26]/10 bg-white/95 px-8 backdrop-blur md:max-w-3xl lg:max-w-5xl">
+        <div class="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:px-6">
+            <nav class="mx-auto flex h-16 w-full max-w-md items-center justify-between rounded-t-2xl border border-b-0 border-[#2F2A26]/10 bg-white/95 px-8 backdrop-blur">
                 <button @click="changeTab('home')" :class="currentTab === 'home' ? 'text-[#A64B35]' : 'text-gray-400'" class="flex flex-col items-center">
                     <Home class="w-5 h-5" />
                     <span class="text-[10px]">{{ $t('menu.inicio') }}</span>
@@ -1148,53 +1327,31 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <div v-if="isActivityModalOpen && selectedActivity" class="fixed inset-0 z-[85] flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/40" @click="isActivityModalOpen = false"></div>
-            <div class="relative bg-white rounded-2xl border border-[#2F2A26]/10 shadow-xl w-full max-w-sm overflow-hidden">
-                <img :src="selectedActivity.image_url || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80&fm=avif'" :alt="selectedActivity.name" class="h-48 w-full shrink-0 object-cover rounded-t-2xl">
-                <div class="p-4">
-                    <p class="text-sm font-semibold text-[#2F2A26]">{{ selectedActivity.name }}</p>
-                    <p class="text-xs text-[#2F2A26]/65 mt-1">{{ selectedActivity.description }}</p>
-                    <div class="mt-3 space-y-2">
-                        <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedActivity.name)}`" target="_blank" class="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#2F2A26]/20 py-2 text-xs text-[#2F2A26]">
-                            <MapPin class="w-3.5 h-3.5" />
-                            {{ $t('menu.como_llegar') }}
-                        </a>
-                        <button @click="startReservation(selectedActivity)" class="w-full rounded-lg bg-[#A64B35] text-white py-2 text-xs">{{ $t('activities.reservar_bus') }}</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div v-if="isBookingModalOpen && selectedActivity" class="fixed inset-0 z-[90] flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/40" @click="isBookingModalOpen = false"></div>
-            <div class="relative bg-white rounded-xl border border-[#2F2A26]/10 shadow-xl p-4 w-full max-w-sm">
-                <p class="text-sm font-semibold text-[#2F2A26]">{{ $t('activities.confirmar_reserva') }}</p>
-                <p class="text-xs text-[#2F2A26]/65 mt-1">{{ selectedActivity.name }}</p>
-                <label class="block text-xs text-[#2F2A26]/65 mt-3">{{ $t('activities.numero_plazas') }}</label>
-                <input v-model.number="bookingSeats" type="number" min="1" :max="plazasDisponibles(selectedActivity) || 1" class="w-full rounded-lg border-[#2F2A26]/20 mt-1 text-sm">
-                <p class="text-xs font-semibold text-[#A64B35] mt-2">{{ $t('activities.total_label') }} {{ formatPrice(bookingTotal) }}</p>
-                <button @click="confirmReservation" class="w-full mt-3 rounded-lg bg-[#A64B35] text-white py-2 text-sm">{{ $t('activities.confirmar_reserva') }}</button>
-            </div>
-        </div>
-
-        <div v-if="isReservaModalOpen && selectedActividadReserva" class="fixed inset-0 z-[90] flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/40" @click="isReservaModalOpen = false"></div>
-            <div class="relative bg-white rounded-xl border border-[#2F2A26]/10 shadow-xl p-4 w-full max-w-sm">
-                <p class="text-sm font-semibold text-[#2F2A26]">{{ selectedActividadReserva.name }}</p>
-                <p class="text-xs text-[#2F2A26]/65 mt-1">{{ formatDateTime(selectedActividadReserva.date_time) }}</p>
-                <label class="block text-xs text-[#2F2A26]/65 mt-3">{{ $t('activities.cuantos_son') }}</label>
-                <input v-model.number="cantidadReserva" @input="adjustCantidadReserva" type="number" min="1" :max="plazasDisponibles(selectedActividadReserva) || 1" class="w-full rounded-lg border-[#2F2A26]/20 mt-1 text-sm">
-                <p class="text-xs text-[#A64B35] mt-2">{{ $t('activities.precio_total') }} {{ Number(selectedActividadReserva.price) === 0 ? $t('activities.gratis') : formatPrice(precioTotalReserva) }}</p>
-                <button @click="confirmarReservaActividad" class="w-full mt-3 rounded-lg bg-[#A64B35] text-white py-2 text-sm">
-                    {{ $t('actions.confirm') }}
-                </button>
-            </div>
-        </div>
+        <GuestActivityBookingModal
+            :open="isActivityBookingModalOpen"
+            :activity="selectedActivityBooking"
+            v-model:seats="bookingSeats"
+            v-model:scheduled-time="bookingScheduledTime"
+            v-model:payment-method="activityPaymentMethod"
+            :submitting="submittingActivityBooking"
+            :stripe-card-loading="stripeCardLoading"
+            :stripe-unavailable="stripeUnavailable"
+            :stripe-card-error="stripeCardError"
+            @close="closeActivityBookingModal"
+            @confirm="confirmActivityBooking"
+            @retry-stripe="mountStripeCard('activity-card-element')"
+        />
 
         <div v-if="isMenuItemModalOpen && selectedMenuItem" class="fixed inset-0 z-[92] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/40" @click="isMenuItemModalOpen = false"></div>
-            <div class="relative bg-white rounded-xl border border-[#2F2A26]/10 shadow-xl p-4 w-full max-w-sm">
+            <div class="relative w-full max-w-sm overflow-hidden rounded-xl border border-[#2F2A26]/10 bg-white shadow-xl">
+                <img
+                    v-if="serviceImageSrc(selectedMenuItem)"
+                    :src="serviceImageSrc(selectedMenuItem)"
+                    :alt="selectedMenuItem.name"
+                    class="h-40 w-full object-cover"
+                />
+                <div class="p-4">
                 <div class="flex items-start justify-between gap-2 min-w-0">
                     <div class="min-w-0 flex-1">
                         <p class="break-words text-sm font-semibold text-[#2F2A26]">{{ selectedMenuItem.name }}</p>
@@ -1224,23 +1381,31 @@ onUnmounted(() => {
                 <button type="button" @click="addToCart(selectedMenuItem, 1); isMenuItemModalOpen = false" class="w-full mt-4 rounded-lg bg-[#A64B35] text-white py-2 text-sm">
                     {{ $t('services.anadir_pedido') }}
                 </button>
+                </div>
             </div>
         </div>
 
         <div v-if="mostrarModalTurismo && sitioSeleccionado" class="fixed inset-0 z-[93] flex items-center justify-center p-3 sm:p-4">
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="cerrarModalTurismo" />
-            <div class="relative w-[90%] sm:max-w-md md:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-[#2F2A26]/10 shadow-xl">
+            <div class="relative w-[90%] sm:max-w-md lg:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-[#2F2A26]/10 shadow-xl">
                 <img
                     :src="sitioSeleccionado.image_url || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80&fm=avif'"
                     :alt="sitioSeleccionado.name"
-                    class="h-32 w-full shrink-0 object-cover rounded-t-2xl sm:h-48 md:h-56"
+                    class="h-32 w-full shrink-0 object-cover rounded-t-2xl sm:h-48 lg:h-56"
                 />
                 <div class="space-y-4 p-6">
                     <p class="text-lg font-semibold text-[#2F2A26] sm:text-xl">{{ sitioSeleccionado.name || $t('tourism.lugar') }}</p>
                     <p class="text-sm leading-relaxed text-[#2F2A26]/80 sm:text-base">{{ tourismDescription(sitioSeleccionado) }}</p>
                     <button
                         type="button"
-                        class="w-full rounded-lg bg-[#2F2A26] py-2 text-sm font-medium text-white transition hover:bg-[#A64B35] sm:py-3"
+                        class="w-full rounded-lg bg-[#A64B35] py-2 text-sm font-semibold text-white transition hover:bg-[#8f3f2e] sm:py-3"
+                        @click="reservarDesdeModalTurismo"
+                    >
+                        {{ $t('menu.reservar') }}
+                    </button>
+                    <button
+                        type="button"
+                        class="w-full rounded-lg border border-[#2F2A26]/20 py-2 text-sm font-medium text-[#2F2A26] transition hover:bg-[#2F2A26]/5 sm:py-3"
                         @click="cerrarModalTurismo"
                     >
                         {{ $t('tourism.cerrar') }}
@@ -1251,7 +1416,14 @@ onUnmounted(() => {
 
         <div v-if="mostrarModalComida && comidaSeleccionada" class="fixed inset-0 z-[94] flex items-center justify-center p-3 sm:p-4">
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="cerrarModalComida" />
-            <div class="relative max-h-[90vh] w-[92%] overflow-y-auto rounded-2xl border border-[#2F2A26]/10 bg-white p-4 shadow-xl sm:max-w-sm md:max-w-md sm:p-5">
+            <div class="relative max-h-[90vh] w-[92%] overflow-y-auto rounded-2xl border border-[#2F2A26]/10 bg-white shadow-xl sm:max-w-sm lg:max-w-md">
+                <img
+                    v-if="serviceImageSrc(comidaSeleccionada)"
+                    :src="serviceImageSrc(comidaSeleccionada)"
+                    :alt="comidaSeleccionada.name"
+                    class="h-44 w-full object-cover rounded-t-2xl sm:h-52"
+                />
+                <div class="p-4 sm:p-5">
                 <p class="break-words text-lg font-semibold text-[#2F2A26] sm:text-xl">{{ comidaSeleccionada.name }}</p>
                 <span
                     v-if="restaurantCategoryLabel(comidaSeleccionada)"
@@ -1357,6 +1529,7 @@ onUnmounted(() => {
                         <span v-else-if="metodoPago === 'tarjeta'">{{ $t('checkout.pagar') }} - {{ formatPrice(precioTotalModalComida) }}</span>
                         <span v-else>{{ $t('checkout.confirmar_precio', { price: formatPrice(precioTotalModalComida) }) }}</span>
                     </button>
+                </div>
                 </div>
             </div>
         </div>

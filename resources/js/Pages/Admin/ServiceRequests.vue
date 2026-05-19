@@ -41,13 +41,22 @@ const statusLabel = (status, serviceType) => {
 const statusBadgeClass = (status) => {
     const key = String(status ?? '').toLowerCase();
     if (key === 'completado') {
-        return 'bg-green-100 text-green-800';
+        return 'bg-[#2F2A26]/10 text-[#2F2A26]';
     }
     if (key === 'en_proceso' || key === 'en_camino') {
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-[#D9C5B2]/60 text-[#2F2A26]';
     }
-    return 'bg-yellow-100 text-yellow-800';
+    return 'bg-[#F0F0F0] text-[#2F2A26]';
 };
+
+const statusSelectClass =
+    'max-w-[9rem] rounded-lg border border-[#E8E8E8] bg-white px-2 py-1.5 text-xs font-medium text-[#2F2A26] shadow-sm focus:border-[#A64B35] focus:outline-none focus:ring-1 focus:ring-[#A64B35]/25 disabled:opacity-50';
+
+const btnInProgressClass =
+    'rounded-lg border border-[#2F2A26] bg-transparent px-2.5 py-1.5 text-xs font-semibold text-[#2F2A26] transition-colors hover:bg-[#F0F0F0] disabled:opacity-50';
+
+const btnCompleteClass =
+    'rounded-lg bg-[#2F2A26] px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-black disabled:opacity-50';
 
 const updateStatus = (orderId, status) => {
     updatingId.value = orderId;
@@ -164,7 +173,7 @@ const markResolved = (order) => {
                                         <div class="flex flex-wrap items-center justify-end gap-2">
                                             <select
                                                 :value="order.status"
-                                                class="max-w-[9rem] rounded-lg border border-[#2F2A26]/15 bg-white px-2 py-1.5 text-xs text-[#2F2A26] focus:border-[#A64B35] focus:outline-none focus:ring-1 focus:ring-[#A64B35] disabled:opacity-50"
+                                                :class="statusSelectClass"
                                                 :disabled="updatingId === order.id"
                                                 @change="updateStatus(order.id, $event.target.value)"
                                             >
@@ -175,7 +184,7 @@ const markResolved = (order) => {
                                             <button
                                                 v-if="order.status === 'recibido'"
                                                 type="button"
-                                                class="rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                                                :class="btnInProgressClass"
                                                 :disabled="updatingId === order.id"
                                                 @click="markInProgress(order)"
                                             >
@@ -184,7 +193,7 @@ const markResolved = (order) => {
                                             <button
                                                 v-if="order.status !== 'completado'"
                                                 type="button"
-                                                class="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                                                :class="btnCompleteClass"
                                                 :disabled="updatingId === order.id"
                                                 @click="markResolved(order)"
                                             >
@@ -248,7 +257,7 @@ const markResolved = (order) => {
                                         <div class="flex flex-wrap items-center justify-end gap-2">
                                             <select
                                                 :value="order.status"
-                                                class="max-w-[9rem] rounded-lg border border-[#2F2A26]/15 bg-white px-2 py-1.5 text-xs text-[#2F2A26] focus:border-[#A64B35] focus:outline-none focus:ring-1 focus:ring-[#A64B35] disabled:opacity-50"
+                                                :class="statusSelectClass"
                                                 :disabled="updatingId === order.id"
                                                 @change="updateStatus(order.id, $event.target.value)"
                                             >
@@ -259,7 +268,7 @@ const markResolved = (order) => {
                                             <button
                                                 v-if="order.status === 'recibido'"
                                                 type="button"
-                                                class="rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                                                :class="btnInProgressClass"
                                                 :disabled="updatingId === order.id"
                                                 @click="markInProgress(order)"
                                             >
@@ -268,7 +277,7 @@ const markResolved = (order) => {
                                             <button
                                                 v-if="order.status !== 'completado'"
                                                 type="button"
-                                                class="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                                                :class="btnCompleteClass"
                                                 :disabled="updatingId === order.id"
                                                 @click="markResolved(order)"
                                             >

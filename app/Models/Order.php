@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\AmenityRequestType;
 use App\Support\CleaningRequestType;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,10 +38,6 @@ class Order extends Model
         'status',
     ];
 
-    protected $attributes = [
-        'prioridad' => self::PRIORIDAD_MEDIA,
-    ];
-
     public function habitacion(): BelongsTo
     {
         return $this->belongsTo(Habitacion::class, 'habitacion_id');
@@ -67,5 +64,25 @@ class Order extends Model
                     ->orWhereNull('description')
                     ->orWhere('description', '');
             });
+    }
+
+    /** Peticiones de limpieza de una habitación en un día concreto (calendario local de la app). */
+    public function scopeCleaningForRoomOnDate(Builder $query, int $habitacionId, ?Carbon $date = null): Builder
+    {
+        $day = ($date ?? now())->toDateString();
+
+        return $query
+            ->where('habitacion_id', $habitacionId)
+            ->where('service_type', 'limpieza')
+            ->whereDate('created_at', $day);
+    }
+
+    /** Limpieza de habitación con franja horaria — máximo una por día; no incluye amenities. */
+    public static function roomHasScheduledRoomCleaningToday(int $habitacionId): bool
+    {
+        return static::query()
+            ->cleaningForRoomOnDate($habitacionId)
+            ->where('description', CleaningRequestType::ROOM_CLEANING)
+            ->exists();
     }
 }

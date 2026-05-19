@@ -15,7 +15,9 @@ class ActivityReservation extends Model
         'session_token',
         'activity_id',
         'seats_booked',
+        'scheduled_time',
         'total_price',
+        'payment_method',
         'status',
     ];
 
@@ -25,7 +27,7 @@ class ActivityReservation extends Model
 
     public function room(): BelongsTo
     {
-        return $this->belongsTo(Room::class, 'room_id');
+        return $this->belongsTo(Habitacion::class, 'room_id');
     }
 
     public function activity(): BelongsTo

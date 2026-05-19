@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,15 +18,19 @@ class Activity extends Model
         'date_time',
         'price',
         'max_seats',
-        'plazas_disponibles',
         'image_url',
+    ];
+
+    protected $appends = [
+        'max_capacity',
+        'plazas_disponibles',
+        'acceso_libre',
     ];
 
     protected $casts = [
         'date_time' => 'datetime',
         'price' => 'decimal:2',
         'max_seats' => 'integer',
-        'plazas_disponibles' => 'integer',
     ];
 
     public function activityReservations(): HasMany
@@ -34,53 +39,62 @@ class Activity extends Model
     }
 
     /**
-     * Cupo libre efectivo (columna plazas_disponibles, con respaldo desde max_seats).
+     * Alias de max_seats para la API y el frontend (aforo máximo; null = ilimitado).
      */
-    public function cupoDisponible(): int
+    protected function maxCapacity(): Attribute
     {
-        $maxSeats = max(0, (int) $this->max_seats);
-        $almacenado = $this->getAttribute('plazas_disponibles');
-
-        if ($almacenado === null) {
-            return $this->cupoCalculadoDesdeReservas($maxSeats);
-        }
-
-        $enColumna = max(0, (int) $almacenado);
-        $calculado = $this->cupoCalculadoDesdeReservas($maxSeats);
-
-        // Datos legacy: columna en 0 pero max_seats aún tiene cupo sin reservas confirmadas.
-        if ($enColumna === 0 && $calculado > 0) {
-            return $calculado;
-        }
-
-        return $enColumna;
+        return Attribute::get(fn () => $this->attributes['max_seats'] !== null
+            ? (int) $this->attributes['max_seats']
+            : null);
     }
 
     /**
-     * Persiste plazas_disponibles cuando el valor almacenado no refleja el cupo real.
+     * Plazas libres calculadas: max_capacity − reservas pendientes/confirmadas.
+     * null = acceso libre (sin límite de aforo).
      */
+    protected function plazasDisponibles(): Attribute
+    {
+        return Attribute::get(function () {
+            if (! $this->tieneAforoLimitado()) {
+                return null;
+            }
+
+            return max(0, (int) $this->max_capacity - $this->plazasOcupadas());
+        });
+    }
+
+    protected function accesoLibre(): Attribute
+    {
+        return Attribute::get(fn () => ! $this->tieneAforoLimitado());
+    }
+
+    public function tieneAforoLimitado(): bool
+    {
+        return $this->attributes['max_seats'] !== null;
+    }
+
+    public function plazasOcupadas(): int
+    {
+        return (int) $this->activityReservations()
+            ->whereIn('status', ['pendiente', 'confirmada'])
+            ->sum('seats_booked');
+    }
+
+    /** @deprecated El cupo se calcula dinámicamente; no decrementar columna. */
     public function sincronizarCupoDisponible(): void
     {
-        $maxSeats = max(0, (int) $this->max_seats);
-        $calculado = $this->cupoCalculadoDesdeReservas($maxSeats);
-        $almacenado = $this->getAttribute('plazas_disponibles');
-
-        if ($almacenado === null || ((int) $almacenado === 0 && $calculado > 0)) {
-            $this->forceFill(['plazas_disponibles' => $calculado])->saveQuietly();
-        }
+        // Sin operación: compatibilidad con código legado.
     }
 
+    /** @deprecated El cupo se calcula dinámicamente; no decrementar columna. */
     public function decrementarCupo(int $plazas): void
     {
-        $this->decrement('plazas_disponibles', $plazas);
+        // Sin operación: compatibilidad con código legado.
     }
 
-    protected function cupoCalculadoDesdeReservas(int $maxSeats): int
+    /** @deprecated Use el accessor plazas_disponibles */
+    public function cupoDisponible(): ?int
     {
-        $reservadas = (int) $this->activityReservations()
-            ->where('status', 'confirmada')
-            ->sum('seats_booked');
-
-        return max(0, $maxSeats - $reservadas);
+        return $this->plazas_disponibles;
     }
 }

@@ -14,7 +14,6 @@ use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\StayCheckoutController;
-use App\Models\Activity;
 use App\Models\Habitacion;
 use App\Models\Order;
 use App\Models\Service;
@@ -99,6 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $cleaningOrders = null;
         $maintenanceOrders = null;
         $kitchenOrders = null;
+        $kitchenStats = null;
 
         if (in_array($user?->role, [UserRole::COCINA, UserRole::ROOM_SERVICE], true)) {
             $kitchenOrders = Order::with(['services', 'habitacion'])
@@ -107,6 +107,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->latest()
                 ->take(30)
                 ->get();
+
+            $kitchenStats = [
+                'catalogDishes' => Service::query()->where('service_type', 'comida')->count(),
+                'ordersToday' => Order::query()
+                    ->where('service_type', 'comida')
+                    ->whereDate('created_at', today())
+                    ->count(),
+            ];
         }
 
         if ($user?->role === UserRole::LIMPIEZA) {
@@ -131,8 +139,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'cleaningOrders' => $cleaningOrders,
             'maintenanceOrders' => $maintenanceOrders,
             'kitchenOrders' => $kitchenOrders,
-            'totalServices' => Service::query()->count(),
-            'totalActivities' => Activity::query()->count(),
+            'kitchenStats' => $kitchenStats,
         ]);
     })->name('dashboard');
 

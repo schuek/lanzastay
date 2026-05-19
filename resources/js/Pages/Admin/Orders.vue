@@ -4,7 +4,7 @@ import { useRestauranteOrdersChannel } from '@/composables/useRestauranteOrdersC
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SummaryStatCard from '@/Components/Dashboard/SummaryStatCard.vue';
-import { CakeIcon, TicketIcon } from '@heroicons/vue/24/outline';
+import { CakeIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     orders: {
@@ -12,10 +12,6 @@ const props = defineProps({
         default: () => [],
     },
     totalServices: {
-        type: Number,
-        default: 0,
-    },
-    totalActivities: {
         type: Number,
         default: 0,
     },
@@ -93,15 +89,10 @@ const paymentBadgeLabel = (order) => (order?.status === 'pagado' ? 'Pagado' : 'C
                     </label>
                 </div>
 
-                <div class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <SummaryStatCard title="Total Servicios" :value="totalServices" icon-bg-class="bg-blue-50">
+                <div class="mb-5 max-w-sm">
+                    <SummaryStatCard title="Platos en catálogo" :value="totalServices">
                         <template #icon>
-                            <CakeIcon class="h-5 w-5 text-blue-600" />
-                        </template>
-                    </SummaryStatCard>
-                    <SummaryStatCard title="Total Actividades" :value="totalActivities" icon-bg-class="bg-[#A64B35]/10">
-                        <template #icon>
-                            <TicketIcon class="h-5 w-5 text-[#A64B35]" />
+                            <CakeIcon class="h-5 w-5 text-[#A64B35]" />
                         </template>
                     </SummaryStatCard>
                 </div>

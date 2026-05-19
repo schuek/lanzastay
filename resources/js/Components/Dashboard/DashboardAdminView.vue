@@ -80,7 +80,7 @@ const navPanels = computed(() => {
         panels.splice(2, 0, {
             title: 'Catálogo Carta',
             href: route('catalog.index'),
-            actionIcon: 'book-open-dish',
+            actionIcon: 'book-open',
             department: 'kitchen',
         });
     }
@@ -101,7 +101,7 @@ const navPanels = computed(() => {
                 <h2 class="mb-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#2F2A26]/55">
                     Estado operativo
                 </h2>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
                     <DashboardMetricTile
                         label="Ocupación"
                         :value="occupancyPercent"
@@ -137,7 +137,7 @@ const navPanels = computed(() => {
                 <h2 class="mb-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#2F2A26]/55">
                     Panel de control
                 </h2>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
                     <DashboardNavCard
                         v-for="panel in navPanels"
                         :key="panel.href"

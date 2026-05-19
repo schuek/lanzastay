@@ -1,6 +1,6 @@
 <script setup>
 import FaIcon from '@/Components/UI/FaIcon.vue';
-import { CARD_INTERACTIVE, CARD_SHELL, accentTop, themeFor } from '@/Components/Dashboard/dashboardThemes';
+import { CARD_INTERACTIVE, CARD_SHELL } from '@/Components/Dashboard/dashboardThemes';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -82,10 +82,10 @@ const dotClass = (tone, department) => {
                 :key="dept.key"
                 :href="dept.href"
                 class="group flex flex-col p-4"
-                :class="[CARD_SHELL, accentTop(dept.department), CARD_INTERACTIVE, 'cursor-pointer']"
+                :class="[CARD_SHELL, CARD_INTERACTIVE, 'cursor-pointer']"
             >
                 <div class="flex items-center justify-between gap-2">
-                    <FaIcon :icon="dept.icon" class="text-2xl" :class="themeFor(dept.department).iconText" />
+                    <FaIcon :icon="dept.icon" class="text-2xl text-[#A64B35]" />
                     <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="dotClass(dept.tone, dept.department)" />
                 </div>
                 <p class="mt-3 text-sm font-bold text-[#2F2A26]">{{ dept.name }}</p>
